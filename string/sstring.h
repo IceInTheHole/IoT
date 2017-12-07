@@ -40,9 +40,17 @@ void spdIoT_string_delete(spdIoTString *str);
 void spdIoT_string_clear(spdIoTString *str);
 
 void spdIoT_string_setvalue(spdIoTString *str, const char *value);
-void spdIoT_string_setintvalue(spdIoTString * str, int value);
-void spdIoT_string_setlongvalue(spdIoTString * str, long value);
+void spdIoT_string_setintvalue(spdIoTString *str, int value);
+void spdIoT_string_setlongvalue(spdIoTString * tr, long value);
 
+char *spdIoT_string_getvalue(spdIoTString *str);
+#define spdIoT_string_getintvalue(str) spdIoT_str2int(spdIoT_string_getvalue(str));
+#define spdIoT_string_getlongvalue(str) spdIoT_str2long(spdIoT_string_getvalue(str));
+#define spdIoT_string_getfloatvalue(str) spdIoT_str2float(spdIoT_string_getvalue(str));
+#define spdIoT_string_getdoublevalue(str) spdIoT_str2double(spdIoT_string_getvalue(str));
+
+size_t spdIoT_string_getmemorysize(spdIoTString *str);
+size_t spdIoT_string_length(spdIoTString *str);
 #ifdef __cplusplus
 }
 #endif

@@ -58,3 +58,15 @@ const char *spdIoT_sizet2str(size_t value, char *buf, size_t bufSize)
 
     return buf;
 }
+
+
+/* *
+ * @brief spdIoT_sizet2str
+ * */
+const char *spdIoT_ssizet2str(ssize_t value, char *buf, size_t bufSize)
+{
+    UNUSE(bufSize);
+    sprintf(buf, "%zd", value);
+
+    return buf;
+}

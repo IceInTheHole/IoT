@@ -2,9 +2,16 @@
 #define _SPDIoT_HTTP_H_
 
 #include "../string/sstring.h"
+#include "../list/list.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _spdIoTHttpHeader {
-
+    spdIoTListHead list;
+    spdIoTString *name;
+    spdIoTString *value;
 }sdpIoTHttpHeader, spdIoTHttpHeaderListHead, spdIoTHttpHeaderNode;
 
 typedef struct _spdIoTHttpPacket {
@@ -30,6 +37,12 @@ typedef struct _spdIoTHttpRequest {
     spdIoTString *version;
     spdIoTString *userAgent;
     spdIoTHttpResponse *httpRes;
+    spdIoTNetURL *postURL;
+    void *userData;
+    int timeout;
 }spdIoTHttpRequest;
 
+#ifdef __cplusplus
+}
+#endif
 #endif

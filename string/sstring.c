@@ -114,6 +114,7 @@ size_t spdIoT_string_length(spdIoTString *str)
     return NULL != str ? str->valueSize : 0;
 }
 
+
 #if 0
 /* *
  * @brief spdIoT_string_addvalue
