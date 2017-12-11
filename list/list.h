@@ -81,7 +81,7 @@ static inline void spdIoT_list_del_init(struct _spdIoTListHead *entry)
 static inline void spdIoT_list_move(struct _spdIoTListHead *list, struct _spdIoTListHead *head)
 {
     __spdIoT_list_del(list->prev, list->next);
-    spdIoT_list_add(list, head);spdIoT_
+    spdIoT_list_add(list, head);
 }
 
 static inline void spdIoT_list_move_tail(struct _spdIoTListHead *list,

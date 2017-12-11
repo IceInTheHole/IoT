@@ -63,9 +63,58 @@ void spdIoT_dictionary_delete(spdIoTDictionary *dictionaryList)
 }
 
 /* *
- * @brief spdIoT_dictionary_getelement
+ * @brief spdIoT_dictionary_clear
  * */
-spdIoTDictionaryElement *spdIoT_dictionary_getelement(spdIoTDictionary *dir, const char *key)
+
+void spdIoT_dictionary_clear(spdIoTDictionary *dictionaryList)
+{
+    spdIoTDictionaryElement *posElem, *nextElem;
+
+    spdIoT_list_for_each_entry_safe(posElem, nextElem, &dictionaryList->list, list) {
+        spdIoT_dictionary_element_delete(posElem);
+        posElem = NULL;
+    }
+}
+
+/* *
+ * @brief spdIoT_dictionary_size
+ * */
+int spdIoT_dictionary_size(spdIoTDictionary *dir)
+{
+    int cnt = 0;
+    spdIoTListHead *pos;
+
+    if (NULL == dir) {
+        return 0;
+    }
+
+    spdIoT_list_for_each(pos, &dir->list) {
+        cnt++;
+    }
+
+    return cnt;
+}
+
+/* *
+ * @brief spdIoT_dictionary_add
+ * */
+void spdIoT_dictionary_add(spdIoTDictionary *dir, spdIoTDictionaryElement *dirElem)
+{
+    spdIoT_list_add_tail(&dirElem->list, &dir->list);
+}
+
+/* *
+ * @brief spdIoT_dictionary_remove
+ * */
+void spdIoT_dictionary_remove(spdIoTDictionaryElement *dirElem)
+{
+    spdIoT_list_del(&dirElem->list);
+}
+
+/* *
+ * @brief spdIoT_dictionary_get
+ * */
+spdIoTDictionaryElement *spdIoT_dictionary_get(spdIoTDictionary *dir, const char *key)
 {
     spdIoTDictionaryElement *dirElem;
 
@@ -89,7 +138,7 @@ void spdIoT_dictionary_setvalue(spdIoTDictionary *dir, const char *key, const ch
 {
     spdIoTDictionaryElement *dirElem;
 
-    dirElem = spdIoT_dictionary_getelement(dir, key);
+    dirElem = spdIoT_dictionary_get(dir, key);
     if (NULL == dirElem) {
         dirElem = spdIoT_dictionary_new();
         spdIoT_dictionary_add(dir, dirElem);
@@ -105,7 +154,7 @@ const char *spdIoT_dictionary_getvalue(spdIoTDictionary *dir, const char *key)
 {
     spdIoTDictionaryElement *dirElem;
 
-    dirElem = spdIoT_dictionary_getelement(dir, key);
+    dirElem = spdIoT_dictionary_get(dir, key);
     if (NULL == dirElem) {
         return NULL;
     }

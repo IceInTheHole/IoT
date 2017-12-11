@@ -3,6 +3,7 @@
 
 #include "../string/sstring.h"
 #include "../list/list.h"
+#include "uri.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,10 +13,10 @@ typedef struct _spdIoTHttpHeader {
     spdIoTListHead list;
     spdIoTString *name;
     spdIoTString *value;
-}sdpIoTHttpHeader, spdIoTHttpHeaderListHead, spdIoTHttpHeaderNode;
+}spdIoTHttpHeader, spdIoTHttpHeaderList;
 
 typedef struct _spdIoTHttpPacket {
-    spdIoTHttpHeaderListHead headerList;
+    spdIoTHttpHeaderList headerList;
     spdIoTString *content;
 }spdIoTHttpPacket;
 
@@ -37,7 +38,7 @@ typedef struct _spdIoTHttpRequest {
     spdIoTString *version;
     spdIoTString *userAgent;
     spdIoTHttpResponse *httpRes;
-    spdIoTNetURL *postURL;
+    spdIoTNetURI *postURL;
     void *userData;
     int timeout;
 }spdIoTHttpRequest;
