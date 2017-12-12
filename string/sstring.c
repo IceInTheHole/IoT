@@ -3,11 +3,6 @@
 
 #define SPDIoT_STRING_REALLOC_EXTRA 16
 
-#define SPDIoT_STRING_INTEGER_BUFFLEN   16
-#define SPDIoT_STRING_LONG_BUFFLEN      32
-#define SPDIoT_STRING_FLOAT_BUFFLEN     64
-#define SPDIoT_STRING_DOUBLE_BUFFLEN    64
-
 /* *
  * @brief spdIoT_string_new
  * */

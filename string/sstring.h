@@ -7,6 +7,11 @@
 extern "C" {
 #endif
 
+#define SPDIoT_STRING_INTEGER_BUFFLEN   16
+#define SPDIoT_STRING_LONG_BUFFLEN      32
+#define SPDIoT_STRING_FLOAT_BUFFLEN     64
+#define SPDIoT_STRING_DOUBLE_BUFFLEN    64
+
 const char* spdIoT_int2str(int value, char* buf, size_t bufSize);
 const char* spdIoT_long2str(long value, char* buf, size_t bufSize);
 const char* spdIoT_float2str(float value, char* buf, size_t bufSize);

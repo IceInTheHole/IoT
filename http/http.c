@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include "http.h"
+#include "interface.h"
 
 /* *
  * @brief spdIoT_http_header_new
@@ -211,4 +212,155 @@ void spdIoT_http_packet_clear(spdIoTHttpPacket *httpPkt)
 {
     spdIoT_http_headerlist_clear(httpPkt->headerList);
     spdIoT_string_clear(httpPkt->content);
+}
+
+
+/* *
+ * @brief spdIoT_http_packet_setheadervalue
+ * */
+void spdIoT_http_packet_setheadervalue(spdIoTHttpPacket *httpPkt,
+                                       const char *name, const char *value)
+{
+    spdIoT_http_headerlist_set(httpPkt->headerList, name, value);
+}
+
+/* *
+ * @brief spdIoT_http_setheaderinteger
+ * */
+void spdIoT_http_packet_setheaderinteger(spdIoTHttpPacket *httpPkt,
+                                         const char *name, int value)
+{
+    char str[SPDIoT_STRING_INTEGER_BUFFLEN];
+
+    spdIoT_http_packet_setheadervalue(
+                httpPkt->headerList, name, spdIoT_int2str(value, str, sizeof(str)));
+}
+
+/* *
+ * @brief spdIoT_http_setheaderlong
+ * */
+void spdIoT_http_packet_setheaderinteger(spdIoTHttpPacket *httpPkt,
+                                         const char *name, long value)
+{
+    char str[SPDIoT_STRING_LONG_BUFFLEN];
+
+    spdIoT_http_packet_setheadervalue(
+                httpPkt->headerList, name, spdIoT_long2str(value, str, sizeof(str)));
+}
+
+/* *
+ * @brief spdIoT_http_setheadersizet
+ * */
+void spdIoT_http_packet_setheadersizet(spdIoTHttpPacket *httpPkt,
+                                       const char *name, size_t value)
+{
+    char str[SPDIoT_STRING_LONG_BUFFLEN];
+
+    spdIoT_http_packet_setheadervalue(
+                httpPkt->headerList, name, spdIoT_sizet2str(value, str, sizeof(str)));
+}
+
+/* *
+ * @brief spdIoT_http_setheaderssizet
+ * */
+void spdIoT_http_packet_setheadersizet(spdIoTHttpPacket *httpPkt,
+                                       const char *name, ssize_t value)
+{
+    char str[SPDIoT_STRING_LONG_BUFFLEN];
+
+    spdIoT_http_packet_setheadervalue(
+                httpPkt->headerList, name, spdIoT_ssizet2str(value, str, sizeof(str)));
+}
+
+/* *
+ * @brief spdIoT_http_packet_getheadervalue
+ * */
+const char *spdIoT_http_packet_getheadervalue(spdIoTHttpPacket *httpPkt, const char *name)
+{
+    return spdIoT_http_header_getvalue(httpPkt->headerList, name);
+}
+
+/* *
+ * @brief spdIoT_http_packet_getheaderinteger
+ * */
+int spdIoT_http_packet_getheaderinteger(spdIoTHttpPacket *httpPkt, const char *name)
+{
+    const char *value;
+
+    value = spdIoT_http_packet_getheadervalue(httpPkt, name);
+
+    return value != NULL ? atoi(value) : 0;
+}
+
+/* *
+ * @brief spdIoT_http_packet_getheaderlong
+ * */
+long spdIoT_http_packet_getheaderlong(spdIoTHttpPacket *httpPkt, const char *name)
+{
+    const char *value;
+
+    value = spdIoT_http_packet_getheadervalue(httpPkt, name);
+
+    return value != NULL ? atol(value) : 0;
+}
+
+/* *
+ * @brief spdIoT_http_packet_getheadersizet
+ * */
+size_t spdIoT_http_packet_getheadersizet(spdIoTHttpPacket *httpPkt, const char *name)
+{
+    const char *value;
+
+    value = spdIoT_http_packet_getheadervalue(httpPkt, name);
+
+    return value != NULL ? atol(value) : 0;
+}
+
+/* *
+ * @brief spdIoT_http_packet_getheaderssizet
+ * */
+ssize_t spdIoT_http_packet_getheaderssizet(spdIoTHttpPacket *httpPkt, const char *name)
+{
+    const char *value;
+
+    value = spdIoT_http_packet_getheadervalue(httpPkt, name);
+
+    return value != NULL ? atol(value) : 0;
+}
+
+/* *
+ * @brief spdIoT_http_packet_sethost
+ * */
+void spdIoT_http_packet_sethost(spdIoTHttpPacket *httpPkt, const char *addr, int port)
+{
+    char *host;
+    size_t hostMaxLen;
+
+    if (NULL == addr) {
+        return ;
+    }
+
+    hostMaxLen = strlen(addr) + SPDIoT_NET_IPV6_ADDRSTRING_MAXSIZE + SPDIoT_STRING_INTEGER_BUFFLEN;
+    host = (char *) calloc(1, sizeof(char) * hostMaxLen);
+
+    if (NULL == host) {
+        return ;
+    }
+
+    if (0 < port && port != SPDIoT_HTTP_DEFAULT_PORT) {
+        if (spdIoT_net_isipv6addr(addr)) {
+            sprintf(host, "[%s]:%d", addr, port);
+        } else {
+            sprintf(host, "%s:%d", addr, port);
+        }
+    } else {
+        if (spdIoT_net_isipv6addr(addr)) {
+            sprintf(host, "[%s]", addr);
+        } else {
+            sprintf(host, "%s", addr);
+        }
+    }
+
+    spdIoT_http_packet_setheadervalue(httpPkt, SPDIoT_HTTP_HOST, host);
+    free(host);
 }
