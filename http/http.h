@@ -155,7 +155,7 @@ typedef struct _spdIoTHttpPacket {
 }spdIoTHttpPacket;
 
 typedef struct _spdIoTHttpResponse {
-    spdIoTHttpHeaderListHead headerList;
+    spdIoTHttpHeaderList headerList;
     spdIoTString *content;
     spdIoTString *version;
     int statusCode;
@@ -165,7 +165,7 @@ typedef struct _spdIoTHttpResponse {
 }spdIoTHttpResponse;
 
 typedef struct _spdIoTHttpRequest {
-    spdIoTHttpHeaderListHead *headerList;
+    spdIoTHttpHeaderList *headerList;
     spdIoTString *content;
     spdIoTString *method;
     spdIoTString *uri;

@@ -1,5 +1,6 @@
 
 #include <stdlib.h>
+#include <string.h>
 #include "http.h"
 #include "interface.h"
 
@@ -364,3 +365,8 @@ void spdIoT_http_packet_sethost(spdIoTHttpPacket *httpPkt, const char *addr, int
     spdIoT_http_packet_setheadervalue(httpPkt, SPDIoT_HTTP_HOST, host);
     free(host);
 }
+
+/* *
+ * @brief spdIoT_http_packet_post
+ * */
+void spdIoT_http_packet_post(spdIoTHttpPacket *httpPkt, spdIo)
