@@ -1,8 +1,11 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 
 #include "socket.h"
@@ -76,12 +79,14 @@ int spdIoT_socket_listen(spdIoTSocket *sock)
     return listen(sock->id, SOMAXCONN);
 }
 
-int spdIoT_socket_bind(spdIoTSocket *sock, int bindPort, const char *bindAddr, int bindFlag, int reuseFlag)
+int spdIoT_socket_bind(spdIoTSocket *sock, int bindPort,
+                       const char *bindAddr, int bindFlag, int reuseFlag)
 {
     struct addrinfo *addrInfo;
     int ret = 0;
 
-    if (spdIoT_socket_tosocketaddrinfo(spdIoT_socket_getrawtype(sock), bindAddr, bindPort, &addrInfo, bindFlag) < 0) {
+    if (spdIoT_socket_tosocketaddrinfo(spdIoT_socket_getrawtype(sock),
+                                       bindAddr, bindPort, &addrInfo, bindFlag) < 0) {
         return -1;
     }
     spdIoT_socket_setid(sock, socket(addrInfo->ai_family, addrInfo->ai_socktype, 0));
@@ -115,7 +120,8 @@ int spdIoT_socket_accept(spdIoTSocket *serverSock, spdIoTSocket *clientSock)
     struct sockaddr_storage sockClientAddr;
     socklen_t nLength = sizeof(sockClientAddr);
 
-    spdIoT_socket_setid(clientSock, accept(serverSock->id, (struct sockaddr *)&sockClientAddr, nLength));
+    spdIoT_socket_setid(clientSock,
+                        accept(serverSock->id, (struct sockaddr *)&sockClientAddr, nLength));
     if (clientSock->id < 0) {
         return -1;
     }
@@ -138,7 +144,8 @@ int spdIoT_socket_connect(spdIoTSocket *sock, const char *addr, int port)
     struct addrinfo *toaddrinfo;
     int ret;
 
-    if (spdIoT_socket_tosockaddrinfo(spdIoT_socket_getrawtype(sock), addr, port, &toaddrinfo, 1) == false) {
+    if (spdIoT_socket_tosockaddrinfo(spdIoT_socket_getrawtype(sock),
+                                     addr, port, &toaddrinfo, 1) == false) {
         return -1;
     }
     if (!spdIoT_socket_isbound(sock)) {
@@ -264,7 +271,8 @@ size_t spdIoT_socket_skip(spdIoTSocket *sock, size_t skipLen)
     return readCnt;
 }
 
-size_t spdIoT_socket_sendto(spdIoTSocket *sock, const char *addr, int port, const char *data, size_t dataLen)
+size_t spdIoT_socket_sendto(spdIoTSocket *sock,
+                            const char *addr, int port, const char *data, size_t dataLen)
 {
     struct addrinfo *addrInfo;
     ssize_t sentLen;
@@ -283,7 +291,8 @@ size_t spdIoT_socket_sendto(spdIoTSocket *sock, const char *addr, int port, cons
     isBoundFlag = spdIoT_socket_isbound(sock);
     sentLen = -1;
 
-    if (spdIoT_socket_tosocketaddrinfo(spdIoT_socket_getrawtype(sock), addr, port, &addrInfo, 1) < 0) {
+    if (spdIoT_socket_tosocketaddrinfo(spdIoT_socket_getrawtype(sock),
+                                       addr, port, &addrInfo, 1) < 0) {
         return -1;
     }
     if (!isBoundFlag) {
@@ -411,6 +420,92 @@ int spdIoT_socket_joingroup(spdIoTSocket *sock, const char *mcastAddr, const cha
         memcpy(&toaddr6, mcastAddrInfo->ai_addr, sizeof(struct sockaddr_in6));
         memcpy(&ifaddr6, ifAddrInfo->ai_addr, sizeof(struct sockaddr_in6));
         ipv6mr.ipv6mr_multiaddr = toaddr6.sin6_addr;
-        scopeID
+        scopeID = spdIoT_net_getipv6scopeid(ifAddr);
+        ipv6mr.ipv6mr_interface = scopeID;
+
+        sockOptRetCode = setsockopt(sock->id,
+                                IPPROTO_IPV6, IPV6_MULTICAST_IF, (char *)&scopeID, sizeof(scopeID));
+        if (sockOptRetCode != 0) {
+            joinSuccess = -1;
+        }
+
+        sockOptRetCode = setsockopt(sock->id,
+                                IPPROTO_IPV6, IPV6_JOIN_GROUP, (char *)&scopeID, sizeof(scopeID));
+        if (sockOptRetCode != 0) {
+            joinSuccess = -1;
+        }
+    } else {
+        memcpy(&toaddr, mcastAddrInfo->ai_addr, sizeof(struct sockaddr_in));
+        memcpy(&ifaddr, ifAddrInfo->ai_addr, sizeof(struct sockaddr_in));
+        memcpy(&ipmr.imr_multiaddr.s_addr, &toaddr.sin_addr, sizeof(struct in_addr));
+        memcpy(&ipmr.imr_interface.s_addr, &ifaddr.sin_addr, sizeof(struct in_addr));
+        sockOptRetCode =
+                setsockopt(sock->id, IPPROTO_IP, IP_MULTICAST_IF,
+                           (char *)&ipmr.imr_interface.s_addr, sizeof(struct in_addr));
+        if (sockOptRetCode != 0) {
+            joinSuccess = -1;
+        }
+
+        sockOptRetCode =
+                setsockopt(sock->id, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&ipmr, sizeof(ipmr));
+        if (sockOptRetCode != 0) {
+            joinSuccess = -1;
+        }
     }
+
+    freeaddrinfo(mcastAddrInfo);
+    freeaddrinfo(ifAddrInfo);
+
+    return joinSuccess;
+}
+
+int spdIoT_socket_tosockaddrin(const char *addr, int port,
+                             struct sockaddr_in *sockaddr, int isBindAddr)
+{
+    memset(sockaddr, 0, sizeof(sockaddr));
+
+    sockaddr->sin_family = AF_INET;
+    sockaddr->sin_addr.s_addr = htonl(INADDR_ANY);
+    sockaddr->sin_port = htons((unsigned short)port);
+
+    if (isBindAddr) {
+        sockaddr->sin_addr.s_addr = inet_addr(addr);
+        if (sockaddr->sin_addr.s_addr == INADDR_ANY) {
+            struct hostent *hent = gethostbyname(addr);
+            if (NULL == hent) {
+                return -1;
+            }
+            memcpy(&(sockaddr->sin_addr), hent->h_addr, hent->h_length);
+        }
+    }
+
+    return 0;
+}
+
+int spdIoT_socket_tosockaddrinfo(int sockType, const char *addr,
+                                 int port, struct addrinfo **addrInfo, int isBingAddr)
+{
+    struct addrinfo hints;
+    char portStr[32];
+    int errorn;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_socktype = sockType;
+    hints.ai_flags = AI_PASSIVE;
+    sprintf(portStr, "%d", port);
+    if ((errorn = getaddrinfo(addr, portStr, &hints, addrInfo)) != 0) {
+        return -1;
+    }
+
+    if (isBingAddr) {
+        return 0;
+    }
+
+    hints.ai_family = (*addrInfo)->ai_family;
+    freeaddrinfo(*addrInfo);
+    if ((errorn = getaddrinfo(NULL, portStr, &hints, addrInfo)) != 0) {
+        return -1;
+    }
+
+    return 0;
 }
