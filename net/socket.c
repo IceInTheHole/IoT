@@ -538,7 +538,7 @@ void spdIoT_socket_datagram_packet_delete(spdIoTDatagramPacket *dgmPkt)
     free(dgmPkt);
 }
 
-void spdIoT_socket_datagram_packet_cpy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt)
+void spdIoT_socket_datagram_packet_copy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt)
 {
     spdIoT_socket_datagram_packet_setdata(dstDgmPkt, spdIoT_socket_datagram_packet_getdata(srcDgmPkt));
     spdIoT_socket_datagram_packet_setlocaladdress(
