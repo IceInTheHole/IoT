@@ -37,6 +37,18 @@ typedef struct _spdIoTString {
     size_t valueSize;
 }spdIoTString;
 
+typedef struct _spdIoTStringTokenizer {
+    char *value;
+    char *delim;
+    size_t delimCnt;
+    size_t nextStartPos;
+    size_t lastPos;
+    char *currToken;
+    char *nextToken;
+    char repToken;
+    int hasNextToken;
+}spdIoTStringTokenizer;
+
 /******************************
  * string function
  *****************************/

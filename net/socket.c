@@ -10,6 +10,8 @@
 
 #include "socket.h"
 
+#define spdIoT_socket_getrawtype(socket) (((socket->type & SPDIoT_NET_SOCKET_STREAM) == SPDIoT_NET_SOCKET_STREAM) ? SOCK_STREAM : SOCK_DGRAM)
+
 spdIoTSocket *spdIoT_socket_new(int type)
 {
     spdIoTSocket *sock;
@@ -291,7 +293,7 @@ size_t spdIoT_socket_sendto(spdIoTSocket *sock,
     isBoundFlag = spdIoT_socket_isbound(sock);
     sentLen = -1;
 
-    if (spdIoT_socket_tosocketaddrinfo(spdIoT_socket_getrawtype(sock),
+    if (spdIoT_socket_tosockaddrinfo(spdIoT_socket_getrawtype(sock),
                                        addr, port, &addrInfo, 1) < 0) {
         return -1;
     }
@@ -400,7 +402,7 @@ int spdIoT_socket_joingroup(spdIoTSocket *sock, const char *mcastAddr, const cha
     struct sockaddr_in toaddr, ifaddr;
 
     int joinSuccess;
-    int sockOptRetCode;
+    int sockOptRetCode;spdIoT_socket_tosockaddrinfo
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
@@ -508,4 +510,43 @@ int spdIoT_socket_tosockaddrinfo(int sockType, const char *addr,
     }
 
     return 0;
+}
+
+spdIoTDatagramPacket *spdIoT_socket_datagram_packet_new()
+{
+    spdIoTDatagramPacket *dgmPkt;
+
+    dgmPkt = (spdIoTDatagramPacket *) calloc(1, sizeof(spdIoTDatagramPacket));
+    if (NULL != dgmPkt) {
+        dgmPkt->data = spdIoT_string_new();
+        dgmPkt->localAddress = spdIoT_string_new();
+        dgmPkt->remoteAddress = spdIoT_string_new();
+
+        spdIoT_socket_datagram_packet_setlocalport(dgmPkt, 0);
+        spdIoT_socket_datagram_packet_setremoteport(dgmPkt, 0);
+    }
+
+    return dgmPkt;
+}
+
+void spdIoT_socket_datagram_packet_delete(spdIoTDatagramPacket *dgmPkt)
+{
+    spdIoT_string_delete(dgmPkt->data);
+    spdIoT_string_delete(dgmPkt->localAddress);
+    spdIoT_string_delete(dgmPkt->remoteAddress);
+
+    free(dgmPkt);
+}
+
+void spdIoT_socket_datagram_packet_cpy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt)
+{
+    spdIoT_socket_datagram_packet_setdata(dstDgmPkt, spdIoT_socket_datagram_packet_getdata(srcDgmPkt));
+    spdIoT_socket_datagram_packet_setlocaladdress(
+                dstDgmPkt, spdIoT_socket_datagram_packet_getlocaladdress(srcDgmPkt));
+    spdIoT_socket_datagram_packet_setlocalport(
+                dstDgmPkt, spdIoT_socket_datagram_packet_getlocalport(srcDgmPkt));
+    spdIoT_socket_datagram_packet_setremoteaddress(
+                dstDgmPkt, spdIoT_socket_datagram_packet_getremoteaddress(srcDgmPkt));
+    spdIoT_socket_datagram_packet_setremoteport(
+                dstDgmPkt, spdIoT_socket_datagram_packet_getremoteport(srcDgmPkt));
 }

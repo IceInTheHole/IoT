@@ -28,13 +28,13 @@ extern "C" {
 #define SPDIoT_NET_SOCKET_ANCILLARY_BUFSIZE     512
 #define SPDIoT_NET_SOCKET_MULTICAST_DEFAULT_TTL 4
 #define SPDIoT_NET_SOCKET_AUTO_IP_NET           0xa9fe0000
-#define SPDIot_NET_SOCKET_AUTO_IP_MASK          0xffff0000
+#define SPDIoT_NET_SOCKET_AUTO_IP_MASK          0xffff0000
 
 typedef struct _spdIoTSocket {
 	int id;
 	int type;
 	int direction;
-	spdIoTString *ipaddr;
+    spdIoTString *ipaddr;
 	int port;
 #if define(SPDIoT_USE_OPENSSL)
 	SSL_CTX *ctx;
@@ -94,6 +94,30 @@ int spdIoT_socket_joingroup(spdIoTSocket *sock, const char *mcastAddr, const cha
 int spdIoT_socket_setreuseaddress(spdIoTSocket *sock, int flag);
 int spdIoT_socket_setmulticastttl(spdIoTSocket *sock, int ttl);
 int spdIoT_socket_settimeout(spdIoTSocket *sock, int sec);
+
+
+spdIoTDatagramPacket *spdIoT_socket_datagram_packet_new();
+void spdIoT_socket_datagram_packet_delete(spdIoTDatagramPacket *dgmPkt);
+
+#define spdIoT_socket_datagram_packet_setdata(dgmPkt, value) spdIoT_string_setvalue(dgmPkt->data, value)
+#define spdIoT_socket_datagram_packet_getdata(dgmPkt) spdIoT_string_getvalue(dgmPkt->data)
+
+#define spdIoT_socket_datagram_packet_setlocaladdress(dgmPkt, addr) spdIoT_string_setvalue(dgmPkt->localAddress, addr)
+#define spdIoT_socket_datagram_packet_getlocaladdress(dgmPkt) spdIoT_string_getvalue(dgmPkt->localAddress)
+#define spdIoT_socket_datagram_packet_setlocalport(dgmPkt, port) (dgmPkt->localPort = port)
+#define spdIoT_socket_datagram_packet_getlocalport(dgmPkt) (dgmPkt->localPort)
+#define spdIoT_socket_datagram_packet_setremoteaddress(dgmPkt, addr) spdIoT_string_setvalue(dgmPkt->remoteAddress, addr)
+#define spdIoT_socket_datagram_packet_getremoteaddress(dgmPkt) spdIoT_string_getvalue(dgmPkt->remoteAddress)
+#define spdIoT_socket_datagram_packet_setremoteport(dgmPkt, port) (dgmPkt->remotePort = port)
+#define spdIoT_socket_datagram_packet_getremoteport(dgmPkt) (dgmPkt->remotePort)
+
+void spdIoT_socket_datagram_packet_copy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt);
+
+#if define(SPDIoT_USE_OPENSSL)
+#define SPDIoT_NET_SOCKET_SSL 0x0100
+#define spdIoT_socket_ssl_new() spdIoT_socket_new(SPDIoT_NET_SOCKET_STREAM | SPDIoT_NET_SOCKET_SSL)
+#define spdIoT_socket_isssl(sock) (sock->type & SPDIoT_NET_SOCKET_SSL ? 1 : 0)
+#endif
 
 #ifdef __cplusplus
 }
