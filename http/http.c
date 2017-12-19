@@ -3,6 +3,7 @@
 #include <string.h>
 #include "http.h"
 #include "interface.h"
+#include "../net/socket.h"
 
 /* *
  * @brief spdIoT_http_header_new
@@ -369,4 +370,76 @@ void spdIoT_http_packet_sethost(spdIoTHttpPacket *httpPkt, const char *addr, int
 /* *
  * @brief spdIoT_http_packet_post
  * */
-void spdIoT_http_packet_post(spdIoTHttpPacket *httpPkt, spdIo)
+void spdIoT_http_packet_post(spdIoTHttpPacket *httpPkt, spdIoTSocket *sock)
+{
+    spdIoTHttpHeader *header;
+    const char *name, *value;
+    char *content;
+    size_t contentLen;
+
+    /*** send header ***/
+    spdIoT_list_for_each_entry(header, &httpPkt->headerList, list) {
+        name = spdIoT_http_header_getname(header);
+        if (NULL == name) {
+            continue;
+        }
+        spdIoT_socket_write(sock, name, strlen(name));
+        spdIoT_socket_write(sock, SPDIoT_HTTP_COLON, sizeof(SPDIoT_HTTP_COLON) - 1);
+        spdIoT_socket_write(sock, SPDIoT_HTTP_SP, sizeof(SPDIoT_HTTP_SP) - 1);
+
+        value = spdIoT_http_header_getvalue(header);
+        if (NULL != value) {
+            spdIoT_socket_write(sock, value, strlen(value));
+        }
+        spdIoT_socket_write(sock, SPDIoT_HTTP_CRLF, sizeof(SPDIoT_HTTP_CRLF) - 1);
+    }
+    spdIoT_socket_write(sock, SPDIoT_HTTP_CRLF, sizeof(SPDIoT_HTTP_CRLF) - 1);
+
+    /*** send content ***/
+    content = spdIoT_http_packet_getcontent(httpPkt);
+    contentLen = spdIoT_http_packet_getcontentlength(httpPkt);
+    if (NULL != content && 0 < contentLen) {
+        spdIoT_socket_write(sock, content, contentLen);
+    }
+}
+
+/* *
+ * @brief spdIoT_http_packet_read_headers
+ * */
+void spdIoT_http_packet_read_headers(spdIoTHttpPacket *httpPkt,
+                                     spdIoTSocket *sock, char *lineBuf, size_t lineBufSize)
+{
+    spdIoTStringTokenizer *strToken;
+    spdIoTHttpHeader *header;
+    ssize_t readLen;
+    char *name, *value;
+
+    while (1) {
+        readLen = spdIoT_socket_readline(sock, lineBuf, lineBufSize);
+        if (readLen <= 2) {
+            break;
+        }
+        name = NULL;
+        value = NULL;
+        spdIoT_strstripall(lineBuf);
+        strToken = spdIoT_string_tokenizer_new(lineBuf, SPDIoT_HTTP_COLON);
+        if (spdIoT_string_tokenizer_hasmoretoken(strToken)) {
+            name = spdIoT_string_tokenizer_nexttoken(strToken);
+        }
+        if (spdIoT_string_tokenizer_hasmoretoken(strToken)) {
+            value = spdIoT_string_tokenizer_nexttoken(strToken);
+        }
+
+        if (0 < strlen(name)) {
+            if (strlen(value) == 0) {
+                value = "";
+            }
+            header = spdIoT_http_header_new();
+            spdIoT_http_header_setname(header, name);
+            spdIoT_http_header_setvalue(header, value);
+            spdIoT_http_packet_addheader(httpPkt, header);
+        }
+
+        spdIoT_string_tokenizer_delete(strToken);
+    }
+}

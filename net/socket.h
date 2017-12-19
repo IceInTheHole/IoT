@@ -83,7 +83,7 @@ int spdIoT_socket_accept(spdIoTSocket *serverSock, spdIoTSocket *clientSock);
 int spdIoT_socket_connect(spdIoTSocket *sock, const char *addr, int port);
 ssize_t spdIoT_socket_read(spdIoTSocket *sock, char *buffer, size_t bufferLen);
 size_t spdIoT_socket_write(spdIoTSocket *sock, const char *buffer, size_t bufferLen);
-ssize_t spdIoT_socket_readLine(spdIoTSocket *sock, char *buffer, size_t bufferLen);
+ssize_t spdIoT_socket_readline(spdIoTSocket *sock, char *buffer, size_t bufferLen);
 size_t spdIoT_socket_skip(spdIoTSocket *sock, size_t skipLen);
 
 size_t spdIoT_socket_sendto(spdIoTSocket *sock, const char *addr, int port, const char *data, size_t dataLen);

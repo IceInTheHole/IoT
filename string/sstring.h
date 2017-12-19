@@ -19,6 +19,11 @@ const char* spdIoT_double2str(double value, char* buf, size_t bufSize);
 const char* spdIoT_sizet2str(size_t value, char* buf, size_t bufSize);
 const char* spdIoT_ssizet2str(ssize_t value, char* buf, size_t bufSize);
 
+char *spdIoT_strstrip(char *str);
+char *spdIoT_strstripall(char *str);
+char *spdIoT_strstripstr(char *str, char *delim, size_t ndelim);
+char *spdIoT_strstripstrall(char *str, char *delim, size_t ndelim);
+
 #define spdIoT_str2int(value) (value ? atoi(value) : 0)
 #define spdIoT_str2long(value) (value ? atol(value) : 0)
 #define spdIoT_strhex2long(value) (value ? strtol(value, NULL, 16) : 0)
@@ -48,6 +53,12 @@ typedef struct _spdIoTStringTokenizer {
     char repToken;
     int hasNextToken;
 }spdIoTStringTokenizer;
+
+spdIoTStringTokenizer *spdIoT_string_tokenizer_new(const char *str, const char *delim);
+void spdIoT_string_tokenizer_delete(spdIoTStringTokenizer *strToken);
+int spdIoT_string_tokenizer_hasmoretoken(spdIoTStringTokenizer *strToken);
+char *spdIoT_string_tokenizer_nexttoken(spdIoTStringTokenizer *strToken);
+char *spdIoT_string_tokenizer_nextalltoken(spdIoTStringTokenizer *strToken);
 
 /******************************
  * string function
