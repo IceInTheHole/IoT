@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "http.h"
-#include "interface.h"
-#include "../net/socket.h"
+
 
 /* *
  * @brief spdIoT_http_header_new
@@ -149,7 +148,7 @@ spdIoTHttpHeader *spdIoT_http_headerlist_get(spdIoTHttpHeaderList *headerList, c
 /* *
  * @brief spdIoT_http_headerlist_set
  * */
-void *spdIoT_http_headerlist_set(spdIoTHttpHeaderList *headerList,
+void spdIoT_http_headerlist_set(spdIoTHttpHeaderList *headerList,
                                  const char *name, const char *value)
 {
     spdIoTHttpHeader *header;
@@ -187,15 +186,14 @@ const char *spdIoT_http_headerlist_getvalue(spdIoTHttpHeaderList *headerList, co
  * */
 spdIoTHttpPacket *spdIoT_http_packet_new()
 {
-    spdIoTHttpPacket *packet;
+    spdIoTHttpPacket *httpPkt;
 
-    packet = (spdIoTHttpPacket *) calloc(1, sizeof(spdIoTHttpPacket));
-    if (NULL != packet) {
-        packet->headerList = spdIoT_http_headerlist_new();
-        packet->content = spdIoT_string_new();
+    httpPkt = (spdIoTHttpPacket *) calloc(1, sizeof(spdIoTHttpPacket));
+    if (NULL != httpPkt) {
+        spdIoT_http_packet_init(httpPkt);
     }
 
-    return packet;
+    return httpPkt;
 }
 
 /* *
@@ -203,8 +201,8 @@ spdIoTHttpPacket *spdIoT_http_packet_new()
  * */
 void spdIoT_http_packet_delete(spdIoTHttpPacket *httpPkt)
 {
-    spdIoT_http_headerlist_delete(httpPkt->headerList);
-    spdIoT_string_delete(httpPkt->content)
+    spdIoT_http_packet_clean(httpPkt);
+    free(httpPkt);
 }
 
 /* *
@@ -216,6 +214,17 @@ void spdIoT_http_packet_clear(spdIoTHttpPacket *httpPkt)
     spdIoT_string_clear(httpPkt->content);
 }
 
+void spdIoT_http_packet_init(spdIoTHttpPacket *httpPkt)
+{
+    httpPkt->headerList = spdIoT_http_headerlist_new();
+    httpPkt->content = spdIoT_string_new();
+}
+
+void spdIoT_http_packet_clean(spdIoTHttpPacket *httpPkt)
+{
+    spdIoT_http_headerlist_delete(httpPkt->headerList);
+    spdIoT_string_setvalue(httpPkt->content, NULL);
+}
 
 /* *
  * @brief spdIoT_http_packet_setheadervalue
@@ -241,7 +250,7 @@ void spdIoT_http_packet_setheaderinteger(spdIoTHttpPacket *httpPkt,
 /* *
  * @brief spdIoT_http_setheaderlong
  * */
-void spdIoT_http_packet_setheaderinteger(spdIoTHttpPacket *httpPkt,
+void spdIoT_http_packet_setheaderlong(spdIoTHttpPacket *httpPkt,
                                          const char *name, long value)
 {
     char str[SPDIoT_STRING_LONG_BUFFLEN];
@@ -265,7 +274,7 @@ void spdIoT_http_packet_setheadersizet(spdIoTHttpPacket *httpPkt,
 /* *
  * @brief spdIoT_http_setheaderssizet
  * */
-void spdIoT_http_packet_setheadersizet(spdIoTHttpPacket *httpPkt,
+void spdIoT_http_packet_setheaderssizet(spdIoTHttpPacket *httpPkt,
                                        const char *name, ssize_t value)
 {
     char str[SPDIoT_STRING_LONG_BUFFLEN];
@@ -421,8 +430,7 @@ void spdIoT_http_packet_read_headers(spdIoTHttpPacket *httpPkt,
         }
         name = NULL;
         value = NULL;
-        spdIoT_strstripall(lineBuf);
-        strToken = spdIoT_string_tokenizer_new(lineBuf, SPDIoT_HTTP_COLON);
+        strToken = spdIoT_string_tokenizer_new(lineBuf, SPDIoT_HTTP_HEADERLINE_DELIM);
         if (spdIoT_string_tokenizer_hasmoretoken(strToken)) {
             name = spdIoT_string_tokenizer_nexttoken(strToken);
         }
@@ -442,4 +450,198 @@ void spdIoT_http_packet_read_headers(spdIoTHttpPacket *httpPkt,
 
         spdIoT_string_tokenizer_delete(strToken);
     }
+}
+
+/* *
+ * @brief spdIoT_http_packet_copy
+ * */
+void spdIoT_http_packet_copy(spdIoTHttpPacket *dstHttpPkt, spdIoTHttpPacket *srcHttpPkt)
+{
+    spdIoTHttpHeader *dstHeader;
+    spdIoTHttpHeader *srcHeader;
+    spdIoTHttpHeaderList *srcHeaderList;
+
+    spdIoT_http_packet_clear(dstHttpPkt);
+
+    srcHeaderList = spdIoT_http_packet_getheaders(srcHttpPkt);
+    spdIoT_list_for_each_entry(srcHeader, &srcHeaderList->list, list) {
+        dstHeader = spdIoT_http_header_new();
+        spdIoT_http_header_setname(dstHeader, spdIoT_http_header_getname(srcHeader));
+        spdIoT_http_header_setvalue(dstHeader, spdIoT_http_header_getvalue(srcHeader));
+        spdIoT_http_packet_addheader(dstHttpPkt, dstHeader);
+    }
+
+    spdIoT_http_packet_setcontent(dstHttpPkt, spdIoT_http_packet_getcontent(srcHttpPkt));
+}
+
+/*****************************
+ * http request function
+ *****************************/
+spdIoTHttpRequest *spdIoT_http_request_new()
+{
+    spdIoTHttpRequest *httpReq;
+
+    httpReq = (spdIoTHttpRequest *) calloc(1, sizeof(spdIoTHttpRequest));
+    if (NULL != httpReq) {
+        spdIoT_http_packet_init((spdIoTHttpPacket *)httpReq);
+        httpReq->method = spdIoT_string_new();
+        httpReq->version = spdIoT_string_new();
+        httpReq->uri = spdIoT_string_new();
+        httpReq->userAgent = spdIoT_string_new();
+        httpReq->httpRes = spdIoT_http_response_new();
+        httpReq->postURL = spdIoT_net_url_new();
+
+        spdIoT_http_request_setversion(httpReq, SPDIoT_HTTP_VER11);
+        spdIoT_http_request_setuseragent(httpReq, SPDIoT_HTTP_USERAGENT_DEFAULT);
+
+        spdIoT_http_request_setsocket(httpReq, NULL);
+        spdIoT_http_request_setuserdata(httpReq, NULL);
+
+        spdIoT_http_request_settimeout(httpReq, SPDIoT_HTTP_CONN_TIMEOUT);
+    }
+
+    return httpReq;
+}
+
+void spdIoT_http_request_delete(spdIoTHttpRequest *httpReq)
+{
+    spdIoT_http_packet_clean((spdIoTHttpPacket *)httpReq);
+    spdIoT_string_delete(httpReq->method);
+    spdIoT_string_delete(httpReq->version);
+    spdIoT_string_delete(httpReq->uri);
+    spdIoT_string_delete(httpReq->userAgent);
+    spdIoT_http_response_delete(httpReq->httpRes);
+    spdIoT_net_url_detele(httpReq->postURL);
+
+    free(httpReq);
+}
+
+void spdIoT_http_request_clear(spdIoTHttpRequest *httpReq)
+{
+    spdIoT_http_packet_clear((spdIoTHttpPacket *)httpReq);
+    spdIoT_http_request_setmethod(httpReq, NULL);
+    spdIoT_http_request_seturi(httpReq, NULL);
+    spdIoT_http_request_setversion(httpReq, NULL);
+    spdIoT_net_url_clear(httpReq->postURL);
+    spdIoT_http_request_setuserdata(httpReq, NULL);
+}
+
+spdIoTHttpResponse *spdIoT_http_request_post_main(spdIoTHttpRequest *httpReq,
+                                          const char ipaddr, int port, int isSecure)
+{
+    spdIoTSocket *sock;
+    char *method, *uri, *version;
+    spdIoTString *firstLine;
+
+    spdIoT_http_response_clear(httpReq->httpRes);
+
+    spdIoT_socket_settimeout(sock, spdIoT_http_request_gettimeout(httpReq));
+    if (spdIoT_socket_connect(sock, ipaddr, port) < 0) {
+        spdIoT_socket_delete(sock);
+        return httpReq->httpRes;
+    }
+
+    spdIoT_http_request_sethost(httpReq, ipaddr, port);
+    spdIoT_http_packet_setheadervalue((spdIoTHttpPacket *)httpReq,
+                                  SPDIoT_HTTP_USERAGENT, spdIoT_http_request_getuseragent(httpReq));
+    method = spdIoT_http_request_getmethod(httpReq);
+    uri = spdIoT_http_request_geturi(httpReq);
+    version = spdIoT_http_request_getversion(httpReq);
+
+    if (NULL == method || NULL == uri || NULL == version) {
+        spdIoT_socket_close(sock);
+        spdIoT_socket_delete(sock);
+        return httpReq->httpRes;
+    }
+
+    firstLine = spdIoT_string_new();
+    spdIoT_string_addvalue(firstLine, method);
+    spdIoT_string_addvalue(firstLine, SPDIoT_HTTP_SP);
+    spdIoT_string_addvalue(firstLine, uri);
+    spdIoT_string_addvalue(firstLine, SPDIoT_HTTP_SP);
+    spdIoT_string_addvalue(firstLine, version);
+    spdIoT_string_addvalue(firstLine, SPDIoT_HTTP_CRLF);
+    spdIoT_socket_write(sock, spdIoT_string_getvalue(firstLine), spdIoT_string_length(firstLine));
+    spdIoT_string_delete(firstLine);
+
+    spdIoT_http_packet_post((spdIoTHttpPacket *)httpReq, sock);
+
+    spdIoT_http_response_read(httpReq->httpRes, sock, spdIoT_http_request_isheadrequest(httpReq));
+
+    spdIoT_socket_close(sock);
+    spdIoT_socket_delete(sock);
+
+    return httpReq->httpRes;
+}
+
+spdIoTHttpResponse *spdIoT_http_request_post(spdIoTHttpRequest *httpReq, const char *ipaddr, int port)
+{
+    return spdIoT_http_request_post_main(httpReq, ipaddr, port, 0);
+}
+
+#if define(SPDIoT_USE_OPENSSL)
+spdIoTHttpResponse * spdIoT_https_request_post(spdIoTHttpRequest *httpReq, const char *ipaddr, int port)
+{
+    return spdIoT_http_request_post_main(httpReq, ipaddr, port, 1);
+}
+#endif
+
+int spdIoT_http_request_read(spdIoTHttpRequest *httpReq, spdIoTSocket *sock)
+{
+    char lineBuf[SPDIoT_HTTP_READLINE_BUFSIZE];
+    spdIoTStringTokenizer *strToken;
+    ssize_t readLen;
+    spdIoTNetURI *uri = NULL;
+    int failed = 0;
+
+    spdIoT_http_request_clean(httpReq);
+
+    do {
+        readLen = spdIoT_socket_readline(sock, lineBuf, sizeof(lineBuf));
+    } while (readLen >= 1 && readLen <= 2);
+
+    if (readLen <= 0) {
+        return -1;
+    }
+
+    strTok = spdIoT_string_tokenizer_new(lineBuf, SPDIoT_HTTP_STATUSLINE_DELIM);
+    if (spdIoT_string_tokenizer_hasmoretoken(strToken)) {
+        spdIoT_http_request_setmethod(httpReq, spdIoT_string_tokenizer_nexttoken(strToken));
+    } else {
+        failed = 1;
+    }
+    if (spdIoT_string_tokenizer_hasmoretoken(strToken)) {
+        spdIoT_http_request_seturi(httpReq, spdIoT_string_tokenizer_nexttoken(strToken));
+    } else {
+        failed = 1;
+    }
+    if (spdIoT_string_tokenizer_hasmoretoken(strToken)) {
+        spdIoT_http_request_setversion(httpReq, spdIoT_string_tokenizer_nexttoken(strToken));
+    } else {
+        failed = 1;
+    }
+    spdIoT_string_tokenizer_delete(strToken);
+
+    if (failed) {
+        return -1;
+    }
+
+    uri = spdIoT_net_uri_new();
+    if (NULL != uri) {
+        spdIoT_net_uri_set(uri, spdIoT_http_request_geturi(httpReq));
+        if (spdIoT_net_uri_isabsolute(uri) && spdIoT_net_uri_getrequest(urt) != NULL) {
+            spdIoT_http_request_seturi(httpReq, spdIoT_net_uri-getrequest(uri));
+        }
+        spdIoT_net_uri_delete(uri);
+        uri = NULL;
+    }
+    spdIoT_http_packet_clear((spdIoTHttpPacket *)httpReq);
+    spdIoT_http_packet_read_headers((spdIoTHttpPacket *)httpReq, sock, lineBuf, sizeof(lineBuf));
+
+    if (spdIoT_http_packet_hasheader((spdIoTHttpPacket *)httpReq, SPDIoT_HTTP_CONTENT_LENGTH) ||
+            spdIoT_http_packet_hasheader((spdIoTHttpPacket *)httpReq, SPDIoT_HTTP_TRANSFER_ENCODING)) {
+        spdIoT_http_packet_read_body((spdIoTHttpPacket *)httpReq, sock, lineBuf, sizeof(lineBuf));
+    }
+
+    return 0;
 }
