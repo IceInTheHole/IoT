@@ -24,6 +24,10 @@ char *spdIoT_strstripall(char *str);
 char *spdIoT_strstripstr(char *str, char *delim, size_t ndelim);
 char *spdIoT_strstripstrall(char *str, char *delim, size_t ndelim);
 
+ssize_t spdIoT_strstr(const char *str, const char *needle);
+ssize_t spdIoT_strchr(const char *str, const char *chars, size_t nchars);
+ssize_t spdIoT_strrchr(const char *str, const char *chars, size_t nchars);
+
 #define spdIoT_str2int(value) (value ? atoi(value) : 0)
 #define spdIoT_str2long(value) (value ? atol(value) : 0)
 #define spdIoT_strhex2long(value) (value ? strtol(value, NULL, 16) : 0)
@@ -68,6 +72,7 @@ void spdIoT_string_delete(spdIoTString *str);
 void spdIoT_string_clear(spdIoTString *str);
 
 void spdIoT_string_setvalue(spdIoTString *str, const char *value);
+void spdIoT_string_setnvalue(spdIoTString *str, const char *value, size_t len);
 void spdIoT_string_setintvalue(spdIoTString *str, int value);
 void spdIoT_string_setlongvalue(spdIoTString * tr, long value);
 
@@ -78,6 +83,7 @@ char *spdIoT_string_getvalue(spdIoTString *str);
 #define spdIoT_string_getdoublevalue(str) spdIoT_str2double(spdIoT_string_getvalue(str));
 
 char *spdIoT_string_addvalue(spdIoTString *str, char *value);
+char *spdIoT_string_naddvalue(spdIoTString *str, const char *value, size_t valueLen);
 
 size_t spdIoT_string_getmemorysize(spdIoTString *str);
 size_t spdIoT_string_length(spdIoTString *str);

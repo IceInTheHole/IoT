@@ -210,3 +210,55 @@ char *spdIoT_strstripstrall(char *str, char *delim, size_t ndelim)
 
     return str;
 }
+
+ssize_t spdIoT_strstr(const char* haystack, const char* needle)
+{
+  char* strPos;
+
+  if (haystack == NULL || needle == NULL)
+    return -1;
+  strPos = strstr(haystack, needle);
+  if (strPos == NULL)
+    return -1;
+  return (strPos - haystack);
+}
+
+ssize_t spdIoT_strchr(const char *str, const char *chars, size_t nchars)
+{
+    size_t strLen;
+    ssize_t i, j;
+
+
+    if (str == NULL || chars == NULL)
+      return -1;
+
+    strLen = strlen(str);
+    for (i = 0; i < strLen; i++) {
+      for (j = 0; j < nchars; j++) {
+        if (str[i] == chars[j])
+          return i;
+      }
+    }
+
+    return -1;
+}
+
+ssize_t spdIoT_strrchr(const char* str, const char* chars, size_t nchars)
+{
+  size_t strLen;
+  ssize_t i, j;
+
+
+  if (str == NULL || chars == NULL)
+    return -1;
+
+  strLen = strlen(str);
+  for (i = (strLen - 1); 0 <= i; i--) {
+    for (j = 0; j < nchars; j++) {
+      if (str[i] == chars[j])
+        return i;
+    }
+  }
+
+  return -1;
+}

@@ -47,18 +47,28 @@ void spdIoT_string_clear(spdIoTString *str)
 void spdIoT_string_setvalue(spdIoTString * str, const char *value)
 {
     if (NULL != str) {
-        spdIoT_string_clear(str);
-        if (NULL != value) {
-            str->valueSize = strlen(value);
-            str->memSize = str->valueSize + 1;
-            str->value = (char *) calloc(strvalue->memSize * sizeof(char));
-            if (NULL == str->value) {
-                return;
-            }
-            memcpy(str->value, value, str->valueSize);
-            str->value[str->valueSize] = '\0';
-        }
+        spdIoT_string_setnvalue(str, value, strlen(value));
     }
+}
+
+/* *
+ * @brief spdIoT_string_setnvalue
+ * */
+void spdIoT_string_setnvalue(spdIoTString *str, const char *value, size_t len)
+{
+
+    spdIoT_string_clear(str);
+    if (NULL != value) {
+        str->valueSize = len;
+        str->memSize = str->valueSize + 1;
+        str->value = (char *) calloc(1, str->memSize * sizeof(char));
+        if (NULL == str->value) {
+            return;
+        }
+        memcpy(str->value, value, str->valueSize);
+        str->value[str->valueSize] = '\0';
+    }
+
 }
 
 /* *

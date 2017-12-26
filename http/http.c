@@ -288,7 +288,7 @@ void spdIoT_http_packet_setheaderssizet(spdIoTHttpPacket *httpPkt,
  * */
 const char *spdIoT_http_packet_getheadervalue(spdIoTHttpPacket *httpPkt, const char *name)
 {
-    return spdIoT_http_header_getvalue(httpPkt->headerList, name);
+    return spdIoT_http_header_getvalue(spdIoT_http_packet_getheader(httpPkt, name));
 }
 
 /* *
@@ -450,6 +450,122 @@ void spdIoT_http_packet_read_headers(spdIoTHttpPacket *httpPkt,
 
         spdIoT_string_tokenizer_delete(strToken);
     }
+}
+
+/* *
+ * @brief spdIoT_http_packet_read_chunk
+ * */
+size_t spdIoT_http_packet_read_chunk(spdIoTHttpPacket *httpPkt,
+                                     spdIoTSocket *sock, char *lineBuf, size_t lineBufSize)
+{
+    ssize_t readLen = 0;
+    ssize_t conLen = 0;
+    int tries = 0;
+    char *content = NULL;
+
+    readLen = spdIoT_socket_readline(sock, lineBuf, lineBufSize);
+
+    conLen = spdIoT_strhex2long(lineBuf);
+    if (conLen < 1) {
+        return 0;
+    }
+
+    content = (char *) calloc(1, conLen + 1);
+    if (NULL == content) {
+        return 0;
+    }
+
+    contentj[conLen] = '\0';
+
+    readLen = 0;
+    while (readLen < conLen && tries < 20) {
+        readLen += spdIoT_socket_read(sock, (content + readLen), (conLen - readLen));
+        tries++;
+    }
+
+    spdIoT_http_packet_appendncontent(httpPkt, content, readLen);
+    free(content);
+    content = NULL;
+
+    if (readLen == conLen) {
+        spdIoT_socket_readline(sock, lineBuf, lineBufSize);
+    }
+
+    return readLen;
+}
+
+/* *
+ * @brief spdIoT_http_packet_read_body
+ * */
+int spdIoT_http_packet_read_body(spdIoTHttpPacket *httpPkt,
+                                 spdIoTSocket *sock, char *lineBuf, size_t lineBufSize)
+{
+    ssize_t readLen;
+    ssize_t conLen;
+    char *content;
+    char readBuf[1024 + 1];
+    int tries = 0;
+
+    conLen = spdIoT_http_packet_getcontentlength(httpPkt);
+    content = NULL;
+    if (0 < conLen) {
+        content = (char *) calloc(1, conLen + 1);
+        if (NULL == content) {
+            return -1;
+        }
+        readLen = 0;
+
+        while (readLen < conLen && tries < 20) {
+            readLen += spdIoT_socket_read(sock, (content + readLen),  (conLen - readLen));
+            if (readLen <= 0) {
+                tries++;
+            }
+        }
+
+        if (readLen <= 0) {
+            return 0;
+        }
+        content[readLen] = '\0';
+        spdIoT_http_packet_setcontent(httpPkt, content);
+        free(content);
+    } else if (spdIoT_http_packet_getheadervalue(httpPkt, SPDIoT_HTTP_CONTENT_LENGTH) == NULL) {
+        /* check if we read chunked encoding */
+        if (spdIoT_http_packet_ischunked(httpPkt)) {
+            conLen = 0;
+            do {
+                readLen = spdIoT_http_packet_read_chunk(httpPkt, sock, lineBuf, lineBufSize);
+                conLen += readLen;
+            } while (readLen > 0);
+
+            spdIoT_http_packet_setcontentlength(httpPkt, conLen);
+        } else {
+            readLen = 0;
+            conLen = 0;
+            while ((readLen = spdIoT_socket_read(sock, readBuf, 1024)) > 0) {
+                spdIoT_http_packet_appendncontent(httpPkt, readBuf, readLen);
+                conLen += readLen;
+            }
+            spdIoT_http_packet_setcontentlength(httpPkt, conLen);
+        }
+    }
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_packet_read
+ * */
+int spdIoT_http_packet_read(spdIoTHttpPacket *httpPkt,
+                            spdIoTSocket *sock, int onlyHeader, char *lineBuf, size_t lineBufSize)
+{
+    spdIoT_http_packet_clear(httpPkt);
+    spdIoT_http_packet_read_headers(httpPkt, sock, lineBuf, lineBufSize);
+
+    if (onlyHeader) {
+        return 0;
+    }
+
+    return spdIoT_http_packet_read_body(httpPkt, sock, lineBuf, lineBufSize);
 }
 
 /* *
@@ -644,4 +760,18 @@ int spdIoT_http_request_read(spdIoTHttpRequest *httpReq, spdIoTSocket *sock)
     }
 
     return 0;
+}
+
+int spdIoT_http_request_postresponse(spdIoTHttpRequest *httpReq, spdIoTHttpResponse *httpRes)
+{
+    spdIoTSocket *sock;
+    char httpDate[SPDIoT_HTTP_DATE_MAXLEN];
+    char *version, *reasonPhrase;
+    int statusCode;
+    char statusCodeBuf[SPDIoT_STRING_INTEGER_BUFFLEN];
+
+    sock = spdIoT_http_request_getsocket(httpReq);
+
+    spdIoT_http_response_setdate(httpRes,
+                spdIoT_http_getdate(spdIoT_getcurrentsystemtime(), httpDate, sizeof(httpDate)));
 }

@@ -228,10 +228,13 @@ size_t spdIoT_http_packet_getheadersizet(spdIoTHttpPacket *httpPkt, const char *
 ssize_t spdIoT_http_packet_getheaderssizet(spdIoTHttpPacket *httpPkt, const char *name);
 
 #define spdIoT_http_packet_setcontent(httpPkt, value) spdIoT_string_setvalue(httpPkt->content, value)
+#define spdIoT_http_packet_appendncontent(httpPkt, value, len) spdIoT_string_naddvalue(httpPkt->content, value, len)
 #define spdIoT_http_packet_getcontent(httpPkt) spdIoT_string_getvalue(httpPkt->content)
 
 void spdIoT_http_packet_post(spdIoTHttpPacket *httpPkt, spdIoTSocket *sock);
 void spdIoT_http_packet_read_headers(spdIoTHttpPacket *httpPkt, spdIoTSocket *sock, char *lineBuf, size_t lineBufSize);
+void spdIoT_http_packet_read_body(spdIoTHttpPacket *httpPkt, spdIoTSocket *sock, char *lineBuf, size_t lineBufSize);
+
 
 #define spdIoT_http_packet_setcontentlength(httpPkt, value) spdIoT_http_packet_setheaderssizet(httpPkt, SPDIoT_HTTP_CONTENT_LENGTH, value)
 #define spdIoT_http_packet_getcontentlength(httpPkt) spdIoT_http_packet_getheaderssizet(httpPkt, SPDIoT_HTTP_CONTENT_LENGTH)
@@ -265,6 +268,9 @@ void spdIoT_http_request_clear(spdIoTHttpRequest *httpReq);
 #define spdIoT_http_request_geturi(httpReq) spdIoT_string_getvalue(httpReq->uri)
 #define spdIoT_http_request_setsocket(httpReq, sock) (httpReq->sock = sock)
 #define spdIoT_http_request_getsocket(httpReq) (httpReq->sock)
+#define spdIoT_http_request_closesocket(httpReq) spdIoT_socket_close(spdIoT_http_request_getsocket(httpReq))
+spdIoTHttpResponse *spdIoT_http_request_post(spdIoTHttpRequest *httpReq, const char *ipaddr, int port);
+
 #ifdef __cplusplus
 }
 #endif
