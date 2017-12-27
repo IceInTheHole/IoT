@@ -1,8 +1,75 @@
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "http.h"
 
+typedef long spdIoTTime;
+
+static char MONTH_STRING[][4] = {
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+};
+
+static char* to_month_string(int value)
+{
+  if (0 <= value && value < 12)
+    return MONTH_STRING[value];
+  return "";
+}
+
+/****************************************
+* to_week_string()
+****************************************/
+
+static char WEEK_STRING[][4] = {
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+};
+
+static char* to_week_string(int value)
+{
+  if (0 <= value && value < 7)
+    return WEEK_STRING[value];
+  return "";
+}
+
+const char *spdIoT_http_getdate(char *buf, size_t bufSize)
+{
+    struct tm* gmTime;
+    long lt;
+
+    lt = time(NULL);
+
+    gmTime = gmtime(&lt);
+
+    sprintf(buf,
+        "%s, %02d %s %04d %02d:%02d:%02d GMT",
+        to_week_string(gmTime->tm_wday),
+        gmTime->tm_mday,
+        to_month_string(gmTime->tm_mon),
+        gmTime->tm_year + 1900,
+        gmTime->tm_hour,
+        gmTime->tm_min,
+        gmTime->tm_sec);
+
+    return buf;
+}
 
 /* *
  * @brief spdIoT_http_header_new
@@ -773,5 +840,114 @@ int spdIoT_http_request_postresponse(spdIoTHttpRequest *httpReq, spdIoTHttpRespo
     sock = spdIoT_http_request_getsocket(httpReq);
 
     spdIoT_http_response_setdate(httpRes,
-                spdIoT_http_getdate(spdIoT_getcurrentsystemtime(), httpDate, sizeof(httpDate)));
+                spdIoT_http_getdate(httpDate, sizeof(httpDate)));
+    version = spdIoT_http_response_getversion(httpRes);
+    statusCode = spdIoT_http_response_getstatuscode(httpRes);
+    reasonPhrase = spdIoT_http_response_getreasonphrase(httpRes);
+
+    if (NULL == version || NULL == reasonPhrase) {
+        return -1;
+    }
+
+    spdIoT_int2str(statusCode, statusCodeBuf, sizeof(statusCodeBuf));
+
+    /*** send first line ***/
+    spdIoT_socket_write(sock, version, strlen(version));
+    spdIoT_socket_write(sock, SPDIoT_HTTP_SP, strlen(SPDIoT_HTTP_SP));
+    spdIoT_socket_write(sock, statusCodeBuf, strlen(statusCodeBuf));
+    spdIoT_socket_write(sock, SPDIoT_HTTP_SP, strlen(SPDIoT_HTTP_SP));
+    spdIoT_socket_write(sock, reasonPhrase, strlen(reasonPhrase));
+    spdIoT_socket_write(sock, SPDIoT_HTTP_CRLF, strlen(SPDIoT_HTTP_CRLF));
+
+    spdIoT_http_packet_post((spdIoTHttpPacket *)httpRes, sock);
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_request_poststatuscode
+ * */
+int spdIoT_http_request_poststatuscode(spdIoTHttpRequest *httpReq, int httpStatusCode)
+{
+    spdIoTHttpResponse *httpRes;
+    int postRet;
+
+    httpRes = spdIoT_http_response_new();
+    spdIoT_http_response_setstatuscode(httpRes, httpStatusCode);
+    spdIoT_http_response_setcontentlength(httpRes, 0);
+    postRet = spdIoT_http_request_postresponse(httpReq, httpRes);
+    spdIoT_http_response_delete(httpRes);
+
+    return postRet;
+}
+
+/* *
+ * @brief spdIoT_http_request_postdata
+ * */
+int spdIoT_http_request_postdata(spdIoTHttpRequest *httpReq, void *data, int dataLen)
+{
+    if (dataLen <= 0) {
+        return 0;
+    }
+
+    spdIoT_socket_write(spdIoT_http_request_getsocket(httpReq), data, dataLen);
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_request_postchunkedsize
+ * */
+int spdIoT_http_request_postchunkedsize(spdIoTHttpRequest *httpReq, int dataLen)
+{
+    char chunkedChar[SPDIoT_STRING_LONG_BUFFLEN + 2] = { 0 };
+
+    sprintf(chunkedChar, "%x%s", dataLen, SPDIoT_HTTP_CRLF);
+
+    spdIoT_socket_write(spdIoT_http_request_getsocket(httpReq), chunkedChar, strlen(chunkedChar));
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_request_postchunkeddata
+ * */
+int spdIoT_http_request_postchunkeddata(spdIoTHttpRequest *httpReq, void *data, int dataLen)
+{
+    spdIoTSocket *sock;
+
+    if (dataLen <= 0) {
+        return 0;
+    }
+
+    spdIoT_http_request_postchunkedsize(httpReq, dataLen);
+    sock = spdIoT_http_request_getsocket(httpReq);
+    spdIoT_socket_write(sock, data, dataLen);
+    spdIoT_socket_write(sock, SPDIoT_HTTP_CRLF, strlen(SPDIoT_HTTP_CRLF));
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_request_postlastchunk
+ * */
+int spdIoT_http_request_postlastchunk(spdIoTHttpRequest *httpReq)
+{
+    spdIoT_http_request_postchunkedsize(httpReq, 0);
+    spdIoT_socket_write(spdIoT_http_request_getsocket(httpReq),
+                        SPDIoT_HTTP_CRLF, strlen(SPDIoT_HTTP_CRLF));
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_request_copy
+ * */
+void spdIoT_http_request_copy(spdIoTHttpRequest *dstHttpReq, spdIoTHttpRequest *srcHttpReq)
+{
+    spdIoT_http_request_setmethod(dstHttpReq, spdIoT_http_request_getmethod(srcHttpReq));
+    spdIoT_http_request_seturi(dstHttpReq, spdIoT_http_request_seturi(srcHttpReq));
+    spdIoT_http_request_setversion(dstHttpReq, spdIoT_http_request_getversion(srcHttpReq));
+
+    spdIoT_http_packet_copy((spdIoTHttpPacket *)dstHttpReq, (spdIoTHttpPacket *)srcHttpReq);
 }
