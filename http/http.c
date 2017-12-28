@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include "http.h"
+#include "../net/url.h"
 
 typedef long spdIoTTime;
 
@@ -542,7 +543,7 @@ size_t spdIoT_http_packet_read_chunk(spdIoTHttpPacket *httpPkt,
         return 0;
     }
 
-    contentj[conLen] = '\0';
+    content[conLen] = '\0';
 
     readLen = 0;
     while (readLen < conLen && tries < 20) {
@@ -657,6 +658,32 @@ void spdIoT_http_packet_copy(spdIoTHttpPacket *dstHttpPkt, spdIoTHttpPacket *src
     spdIoT_http_packet_setcontent(dstHttpPkt, spdIoT_http_packet_getcontent(srcHttpPkt));
 }
 
+/* *
+ * @brief spdIoT_http_packet_print
+ * */
+void spdIoT_http_packet_print(spdIoTHttpPacket *httpPkt)
+{
+    spdIoTHttpHeader *header;
+    spdIoTHttpHeaderList *headerList;
+    char *content;
+    long contentLen;
+
+    headerList = spdIoT_http_packet_getheaders(httpPkt);
+    spdIoT_list_for_each_entry(header, &headerList->list, list) {
+        printf("%s: %s\n",
+               spdIoT_http_header_getname(header),
+               spdIoT_http_header_getvalue(header));
+    }
+    printf("\n");
+
+    content = spdIoT_http_packet_getcontent(httpPkt);
+    contentLen = spdIoT_http_packet_getcontentlength(httpPkt);
+
+    if (content != NULL && 0 < contentLen) {
+        printf("%s\n", content);
+    }
+}
+
 /*****************************
  * http request function
  *****************************/
@@ -694,7 +721,7 @@ void spdIoT_http_request_delete(spdIoTHttpRequest *httpReq)
     spdIoT_string_delete(httpReq->uri);
     spdIoT_string_delete(httpReq->userAgent);
     spdIoT_http_response_delete(httpReq->httpRes);
-    spdIoT_net_url_detele(httpReq->postURL);
+    spdIoT_net_url_delete(httpReq->postURL);
 
     free(httpReq);
 }
@@ -777,7 +804,7 @@ int spdIoT_http_request_read(spdIoTHttpRequest *httpReq, spdIoTSocket *sock)
     spdIoTNetURI *uri = NULL;
     int failed = 0;
 
-    spdIoT_http_request_clean(httpReq);
+    spdIoT_http_request_clear(httpReq);
 
     do {
         readLen = spdIoT_socket_readline(sock, lineBuf, sizeof(lineBuf));
@@ -950,4 +977,124 @@ void spdIoT_http_request_copy(spdIoTHttpRequest *dstHttpReq, spdIoTHttpRequest *
     spdIoT_http_request_setversion(dstHttpReq, spdIoT_http_request_getversion(srcHttpReq));
 
     spdIoT_http_packet_copy((spdIoTHttpPacket *)dstHttpReq, (spdIoTHttpPacket *)srcHttpReq);
+}
+
+/* *
+ * @brief spdIoT_http_request_print
+ * */
+void spdIoT_http_request_print(spdIoTHttpRequest *httpReq)
+{
+    printf("%s %s %s\n",
+           spdIoT_http_request_getmethod(httpReq),
+           spdIoT_http_request_geturi(httpReq),
+           spdIoT_http_request_getversion(httpReq));
+    spdIoT_http_packet_print((spdIoTHttpPacket *)httpReq);
+}
+
+/*******************************************
+ * http response function
+ *******************************************/
+/* *
+ * @brief spdIoT_http_response_new
+ * */
+spdIoTHttpResponse *spdIoT_http_response_new()
+{
+    spdIoTHttpResponse *httpRes;
+
+    httpRes = (spdIoTHttpResponse *) calloc(1, sizeof(spdIoTHttpResponse));
+    if (NULL != httpRes) {
+        spdIoT_http_packet_init((spdIoTHttpPacket *)httpRes);
+        httpRes->version = spdIoT_string_new();
+        httpRes->reasonPhrase = spdIoT_string_new();
+
+        spdIoT_http_response_setversion(httpRes, SPDIoT_HTTP_VER11);
+        spdIoT_http_response_setstatuscode(httpRes, SPDIoT_HTTP_STATUS_BAD_REQUEST);
+        spdIoT_http_response_setuserdata(httpRes, NULL);
+
+        spdIoT_http_response_settimeout(httpRes, SPDIoT_HTTP_CONN_TIMEOUT);
+    }
+
+    return httpRes;
+}
+
+/* *
+ * @brief spdIoT_http_response_delete
+ * */
+void spdIoT_http_response_delete(spdIoTHttpResponse *httpRes)
+{
+    spdIoT_http_packet_clean((spdIoTHttpPacket *)httpRes);
+    spdIoT_string_delete(httpRes->version);
+    spdIoT_string_delete(httpRes->reasonPhrase);
+    free(httpRes);
+}
+
+/* *
+ * @brief spdIoT_http_response_clear
+ * */
+void spdIoT_http_response_clear(spdIoTHttpResponse *httpRes)
+{
+    spdIoT_http_packet_clear((spdIoTHttpPacket *)httpRes);
+    spdIoT_http_response_setversion(httpRes, NULL);
+    spdIoT_http_response_setstatuscode(httpRes, SPDIoT_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    spdIoT_http_response_setreasonphrase(httpRes, NULL);
+    spdIoT_http_response_setuserdata(httpRes, NULL);
+}
+
+/* *
+ * @brief spdIoT_http_response_read
+ * */
+int spdIoT_http_response_read(spdIoTHttpResponse *httpRes, spdIoTSocket *sock, int onlyHeader)
+{
+    char lineBuf[SPDIoT_HTTP_READLINE_BUFSIZE];
+    spdIoTStringTokenizer *strTok;
+    char *token;
+    ssize_t readLen;
+
+    spdIoT_http_response_clear(httpRes);
+
+    readLen = spdIoT_socket_readline(sock, lineBuf, sizeof(lineBuf));
+    if (readLen <= 0) {
+        return -1;
+    }
+
+    strTok = spdIoT_string_tokenizer_new(lineBuf, SPDIoT_HTTP_STATUSLINE_DELIM);
+    if (spdIoT_string_tokenizer_hasmoretoken(strTok)) {
+        spdIoT_http_response_setverion(httpRes, spdIoT_string_tokenizer_nexttoken(strTok));
+    }
+    if (spdIoT_string_tokenizer_hasmoretoken(strTok)) {
+        spdIoT_http_response_setstatuscode(httpRes, atoi(spdIoT_string_tokenizer_nexttoken(strTok)));
+    }
+    if (spdIoT_string_tokenizer_hasmoretoken(strTok)) {
+        spdIoT_http_response_setreasonphrase(httpRes, token);
+    }
+    spdIoT_string_tokenizer_delete(strTok);
+
+    spdIoT_http_packet_read((spdIoTHttpPacket *)httpRes, sock, onlyHeader, lineBuf, sizeof(lineBuf));
+
+    return 0;
+}
+
+/* *
+ * @brief spdIoT_http_response_copy
+ * */
+void spdIoT_http_response_copy(spdIoTHttpResponse *dstHttpRes, spdIoTHttpResponse *srcHttpRes)
+{
+    spdIoT_http_response_setversion(dstHttpRes, spdIoT_http_response_getversion(srcHttpRes));
+    spdIoT_http_response_serstatuscode(dstHttpRes, spdIoT_http_response_getstatuscode(srcHttpRes));
+    spdIoT_http_response_setressonphrase(dstHttpRes, spdIoT_http_response_getreasonphrase(srcHttpRes));
+
+    spdIoT_http_packet_copy((spdIoTHttpPacket *)dstHttpRes, (spdIoTHttpPacket *)srcHttpRes);
+}
+
+/* *
+ * spdIoT_http_response_print
+ * */
+void spdIoT_http_response_print(spdIoTHttpResponse)
+{
+    printf("%s %d %s\n",
+           spdIoT_http_response_getversion(httpRes),
+           spdIoT_http_response_getstatuscode(httpRes),
+           spdIoT_http_response_getreasonphrase(httpRes));
+
+    spdIoT_http_packet_print((spdIoTHttpPacket *)httpRes);
 }

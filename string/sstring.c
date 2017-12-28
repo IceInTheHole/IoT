@@ -76,7 +76,7 @@ void spdIoT_string_setnvalue(spdIoTString *str, const char *value, size_t len)
  * */
 void spdIoT_string_setintvalue(spdIoTString *str, int value)
 {
-    char buf[spdIoT_STRING_INTEGER_BUFFLEN] = { 0 };
+    char buf[SPDIoT_STRING_INTEGER_BUFFLEN] = { 0 };
 
     spdIoT_string_setvalue(str, spdIoT_int2str(value, buf, sizeof(buf)));
 }
@@ -86,7 +86,7 @@ void spdIoT_string_setintvalue(spdIoTString *str, int value)
  * */
 void spdIoT_string_setlongvalue(spdIoTString *str, long value)
 {
-    char buf[spdIoT_STRING_LONG_BUFFLEN] = { 0 };
+    char buf[SPDIoT_STRING_LONG_BUFFLEN] = { 0 };
 
     spdIoT_string_setvalue(str, spdIoT_long2str(value, buf, sizeof(buf)));
 }
@@ -122,7 +122,7 @@ size_t spdIoT_string_length(spdIoTString *str)
 /* *
  * @brief spdIoT_string_addvalue
  * */
-char *spdIoT_string_addvalue(spdIoTString *str, char *value)
+char *spdIoT_string_addvalue(spdIoTString *str, const char *value)
 {
     spdIoT_string_naddvalue(str, value, strlen(value));
 }
@@ -141,7 +141,7 @@ char *spdIoT_string_naddvalue(spdIoTString *str, const char *value, size_t value
     }
 
     newMemSize = str->valueSize + valueLen + 1;
-    if (newMemSize > str || str->value == NULL) {
+    if (newMemSize > str->memSize || str->value == NULL) {
         newMemSize += SPDIoT_STRING_REALLOC_EXTRA;
         newValue = realloc(str->value, newMemSize * sizeof(char));
 

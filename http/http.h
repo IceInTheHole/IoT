@@ -237,7 +237,7 @@ void spdIoT_http_packet_read_headers(spdIoTHttpPacket *httpPkt, spdIoTSocket *so
 void spdIoT_http_packet_read_body(spdIoTHttpPacket *httpPkt, spdIoTSocket *sock, char *lineBuf, size_t lineBufSize);
 
 
-#define spdIoT_http_packet_setcontentlength(httpPkt, value) spdIoT_http_packet_setheaderssizet(httpPkt, SPDIoT_HTTP_CONTENT_LENGTH, value)
+#define spdIoT_http_packet_setcontentlength(httpPkt, value) spdIoT_http_packet_setheadervalue(httpPkt, SPDIoT_HTTP_CONTENT_LENGTH, spdIoT_ssizet2str(value))
 #define spdIoT_http_packet_getcontentlength(httpPkt) spdIoT_http_packet_getheaderssizet(httpPkt, SPDIoT_HTTP_CONTENT_LENGTH)
 
 #define spdIoT_http_packet_setconnection(httpPkt, value) spdIoT_http_packet_setheadervalue(httpPkt, SPDIoT_HTTP_CONNECTION, value)
@@ -251,6 +251,8 @@ void spdIoT_http_packet_read_body(spdIoTHttpPacket *httpPkt, spdIoTSocket *sock,
 void spdIoT_http_packet_sethost(spdIoTHttpPacket *httpPkt, const char *addr, int port);
 #define spdIoT_http_packet_gethost(httpPkt) spdIoT_http_packet_getheaderlong(httpPkt, SPDIoT_HTTP_HOST)
 
+void spdIoT_http_packet_copy(spdIoTHttpPacket *httpPkt);
+void spdIoT_http_packet_print(spdIoTHttpPacket *httpPkt);
 /****************************
  * http request function
  ****************************/
@@ -279,7 +281,7 @@ int spdIoT_http_request_postdata(spdIoTHttpRequest *httpReq, void *data, int dat
 int spdIoT_http_request_postchunkedsize(spdIoTHttpRequest *httpReq, int dataLen);
 int spdIoT_http_request_postchunkeddata(spdIoTHttpRequest *httpReq, void *data, int dataLen);
 int spdIoT_http_request_postlastchunk(spdIoTHttpRequest *httpReq);
-void spdIoT_http_request_copy(spdIoTHttpRequest *dstHttpReq, spdIoTHttpRequest *srcHttpReq);
+
 #define spdIoT_http_reqeust_poststring(httpReq, data) spdIoT_http_request_postdata(httpReq, data)
 #define spdIoT_http_request_postchunkedstring(httpReq, data) spdIoT_http_request_postchunkeddata(httpReq, data)
 
@@ -341,6 +343,65 @@ void spdIoT_http_request_copy(spdIoTHttpRequest *dstHttpReq, spdIoTHttpRequest *
 #define spdIoT_http_request_settimeout(httpReq, value) (httpReq->timeout = value)
 #define spdIoT_http_request_gettimeout(httpReq) (httpReq->timeout)
 
+void spdIoT_http_request_print(spdIoTHttpRequest *httpReq);
+
+/************************************
+ * http response function
+ ************************************/
+spdIoTHttpResponse *spdIoT_http_response_new();
+void spdIoT_http_response_delete(spdIoTHttpResponse *httpRes);
+void spdIoT_http_response_clear(spdIoTHttpResponse *httpRes);
+
+#define spdIoT_http_response_setversion(httpRes, value) spdIoT_string_setvalue(httpRes->version, value)
+#define spdIoT_http_response_getversion(httpRes) spdIoT_string_getvalue(httpRes->version)
+#define spdIoT_http_response_setreasonphrase(httpRes, value) spdIoT_string_setvalue(httpRes->reasonPhrase, value)
+#define spdIoT_http_response_getreasonphrase(httpRes) spdIoT_string_getvalue(httpRes->reasonPhrase)
+#define spdIoT_http_response_setstatuscode(httpRes, value) (httpRes->statusCode = value)
+#define spdIoT_http_response_getstatuscode(httpRes) (httpRes->statusCode)
+int spdIoT_http_response_read(spdIoTHttpResponse *httpRes, spdIoTSocket *sock, int onlyHeader);
+
+#define spdIoT_http_response_issuccessful(httpRes) (spdIoT_http_response_getstatuscode(httpRes) >= 200 && spdIoT_http_response_getstatuscode(httpRes) < 300)
+
+#define spdIoT_http_response_setcontent(httpRes, value) spdIoT_http_packet_setcontent((spdIoTHttpPacket *)httpRes, value)
+#define spdIoT_http_response_setncontent(httpRes, value, len) spdIoT_http_packet_setncontent((spdIoTHttpPacket *)httpRes, value, len)
+#define spdIoT_http_response_appendncontent(httpRes, value, len) spdIoT_http_packet_appendncontent((spdIoTHttpPacket *)httpRes, value, len)
+#define spdIoT_http_response_getcontent(httpRes) spdIoT_http_packet_getcontent((spdIoTHttpPacket *)httpRes)
+#define spdIoT_http_response_getheaders(httpRes) spdIoT_http_packet_getheaders((spdIoTHttpPacket *)httpRes)
+#define spdIoT_http_response_getheader(httpRes, name) spdIoT_http_packet_getheader((spdIoTHttpPacket *)httpRes, name)
+#define spdIoT_http_response_setheadervalue(httpRes, name, value) spdIoT_http_packet_setheadervalue((spdIoTHttpPacket *)httpRes, name, value)
+#define spdIoT_http_response_setheaderinteger(httpRes, name, value) spdIoT_http_packet_setheaderinteger((spdIoTHttpPacket *)httpRes, name, value)
+#define spdIoT_http_response_setheaderlong(httpRes, name, value) spdIoT_http_packet_setheaderlong((spdIoTHttpPacket *)httpRes, name, value)
+#define spdIoT_http_response_getheadervalue(httpRes, name) spdIoT_http_packet_getheadervalue((spdIoTHttpPacket *)httpRes, name)
+#define spdIoT_http_response_getheaderinteger(httpRes, name) spdIoT_http_packet_getheaderinteger((spdIoTHttpPacket *)httpRes, name)
+#define spdIoT_http_response_getheaderlong(httpRes, name) spdIoT_http_packet_getheaderlong((spdIoTHttpPacket *)httpRes, name)
+
+#define spdIoT_http_response_setuserdata(httpRes, value) (httpRes->userData = value)
+#define spdIoT_http_response_getuserdata(httpRes) (httpRes->userData)
+
+#define spdIoT_http_response_setcontentlength(httpRes, value) spdIoT_http_packet_setcontentlength((spdIoTHttpPacket *)httpRes, value)
+#define spdIoT_http_response_getcontentlength(httpRes) spdIoT_http_packet_getcontentlength((spdIoTHttpPacket *)httpRes)
+
+#define spdIoT_http_response_setcontenttype(httpRes, value) spdIoT_http_response_setheadervalue(httpRes, SPDIoT_HTTP_CONTENT_TYPE, value)
+#define spdIoT_http_response_getcontenttype(httpRes) spdIoT_http_response_getheadervalue(httpRes, SPDIoT_HTTP_CONTENT_TYPE)
+
+#define spdIoT_http_response_setconnection(httpRes, value) spdIoT_http_response_setheadervalue(httpRes, SPDIoT_HTTP_CONNECTION, value)
+#define spdIoT_http_response_getconnection(httpRes) spdIoT_http_response_getheadervalue(httpRes, SPDIoT_HTTP_CONNECTION)
+#define spdIoT_http_response_iskeepaliveconnection(httpRes) spdIoT_http_packet_iskeepaliveconnection((spdIoTHttpPacket *)httpRes)
+
+#define spdIoT_http_response_sethost(httpRes, addr, port) spdIoT_http_packet_sethost((spdIoTHttpPacket *)httpRes, addr, port)
+#define spdIoT_http_response_gethost(httpRes) spdIoT_http_response_getheadervalue(httpReq, SPDIoT_HTTP_HOST)
+
+#define spdIoT_http_response_setdate(httpRes, value) spdIoT_http_response_setheadervalue(httpRes, SPDIoT_HTTP_DATE, value)
+#define spdIoT_http_response_getdate(httpRes) spdIoT_http_response_getheadervalue(httpRes, SPDIoT_HTTP_DATE)
+
+#define spdIoT_http_response_settransferencoding(httpRes, value) spdIoT_http_response_setheadervalue(httpRes, SPDIoT_HTTP_TRANSFER_ENCODING, value)
+#define spdIoT_http_response_gettransferencoding(httpRes) spdIoT_http_response_getheadervalue(httpRes, SPDIoT_HTTP_TRANSFER_ENCODING)
+
+void spdIoT_http_response_copy(spdIoTHttpResponse *dstHttpRes, spdIoTHttpResponse *srcHttRes);
+void spdIoT_http_response_print(spdIoTHttpResponse *httpRes);
+
+#define spdIoT_http_response_settimeout(httpRes, value) (httpRes->timeout = value)
+#define spdIoT_http_response_gettimeout(httpRes) (httpRes->timeout)
 #ifdef __cplusplus
 }
 #endif

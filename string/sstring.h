@@ -82,7 +82,7 @@ char *spdIoT_string_getvalue(spdIoTString *str);
 #define spdIoT_string_getfloatvalue(str) spdIoT_str2float(spdIoT_string_getvalue(str));
 #define spdIoT_string_getdoublevalue(str) spdIoT_str2double(spdIoT_string_getvalue(str));
 
-char *spdIoT_string_addvalue(spdIoTString *str, char *value);
+char *spdIoT_string_addvalue(spdIoTString *str, const char *value);
 char *spdIoT_string_naddvalue(spdIoTString *str, const char *value, size_t valueLen);
 
 size_t spdIoT_string_getmemorysize(spdIoTString *str);
