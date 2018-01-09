@@ -36,10 +36,6 @@ typedef struct _spdIoTSocket {
 	int direction;
     spdIoTString *ipaddr;
 	int port;
-#if define(SPDIoT_USE_OPENSSL)
-	SSL_CTX *ctx;
-	SSL *ssl;
-#endif
 }spdIoTSocket;
 
 typedef struct _spdIoTDatagramPacket {
@@ -56,22 +52,22 @@ spdIoTSocket *spdIoT_socket_new(int type);
 int spdIoT_socket_delete(spdIoTSocket *sock);
 
 void spdIoT_socket_setid(spdIoTSocket *sock, int value);
-#define spdIoT_socket_getid(socket) (socket->id)
+#define spdIoT_socket_getid(sock) (sock->id)
 
-#define spdIoT_socket_settype(socket, value) (socket->type = value)
-#define spdIoT_socket_gettype(socket) (socket->type)
-#define spdIoT_socket_issocketstream(socket) (socket->type & SPDIoT_NET_SOCKET_STREAM ? 1 : 0)
-#define spdIoT_socket_isdatagramstream(socket) (socket->type & SPDIoT_NET_SOCKET_DGRAM ? 1 : 0)
+#define spdIoT_socket_settype(sock, value) (sock->type = value)
+#define spdIoT_socket_gettype(sock) (sock->type)
+#define spdIoT_socket_issocketstream(sock) (sock->type & SPDIoT_NET_SOCKET_STREAM ? 1 : 0)
+#define spdIoT_socket_isdatagramstream(sock) (sock->type & SPDIoT_NET_SOCKET_DGRAM ? 1 : 0)
 
-#define spdIoT_socket_setdirection(socket, value) (socket->direction = value)
-#define spdIoT_socket_getdirection(socket) (socket->direction)
-#define spdIoT_socket_isclient(socket) (socket->direction == SPDIoT_NET_SOCKET_CLIENT ? 1 : 0)
-#define spdIoT_socket_isserver(socket) (socket->direction == SPDIoT_NET_SOCKET_SERVER ? 1 : 0)
+#define spdIoT_socket_setdirection(sock, value) (sock->direction = value)
+#define spdIoT_socket_getdirection(sock) (sock->direction)
+#define spdIoT_socket_isclient(sock) (sock->direction == SPDIoT_NET_SOCKET_CLIENT ? 1 : 0)
+#define spdIoT_socket_isserver(sock) (sock->direction == SPDIoT_NET_SOCKET_SERVER ? 1 : 0)
 
-#define spdIoT_socket_setaddress(socket, value) spdIoT_string_setvalue(socket->ipaddr, value)
-#define spdIoT_socket_setport(socket, value) (socket->port, value)
-#define spdIoT_socket_getaddress(socket) spdIoT_string_getvalue(socket->ipaddr)
-#define spdIoT_socket_getport(socket) (socket->port)
+#define spdIoT_socket_setaddress(sock, value) spdIoT_string_setvalue(sock->ipaddr, value)
+#define spdIoT_socket_setport(sock, value) (sock->port, value)
+#define spdIoT_socket_getaddress(sock) spdIoT_string_getvalue(sock->ipaddr)
+#define spdIoT_socket_getport(sock) (sock->port)
 
 int spdIoT_socket_isbound(spdIoTSocket *sock);
 int spdIoT_socket_close(spdIoTSocket *sock);
@@ -112,12 +108,6 @@ void spdIoT_socket_datagram_packet_delete(spdIoTDatagramPacket *dgmPkt);
 #define spdIoT_socket_datagram_packet_getremoteport(dgmPkt) (dgmPkt->remotePort)
 
 void spdIoT_socket_datagram_packet_copy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt);
-
-#if define(SPDIoT_USE_OPENSSL)
-#define SPDIoT_NET_SOCKET_SSL 0x0100
-#define spdIoT_socket_ssl_new() spdIoT_socket_new(SPDIoT_NET_SOCKET_STREAM | SPDIoT_NET_SOCKET_SSL)
-#define spdIoT_socket_isssl(sock) (sock->type & SPDIoT_NET_SOCKET_SSL ? 1 : 0)
-#endif
 
 #ifdef __cplusplus
 }

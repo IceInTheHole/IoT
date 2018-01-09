@@ -122,8 +122,8 @@ spdIoTDictionaryElement *spdIoT_dictionary_get(spdIoTDictionary *dir, const char
         return NULL;
     }
 
-    spdIoT_list_for_each_entry(dirElem, dir, list) {
-        if (strcmp(key, dirElem->key) == 0) {
+    spdIoT_list_for_each_entry(dirElem, &dir->list, list) {
+        if (strcmp(key, spdIoT_string_getvalue(dirElem->key)) == 0) {
             return  dirElem;
         }
     }

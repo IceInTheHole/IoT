@@ -9,25 +9,25 @@
 #include <netdb.h>
 
 #include "socket.h"
+#include "interface.h"
 
-#define spdIoT_socket_getrawtype(socket) (((socket->type & SPDIoT_NET_SOCKET_STREAM) == SPDIoT_NET_SOCKET_STREAM) ? SOCK_STREAM : SOCK_DGRAM)
+int spdIoT_socket_tosockaddrin(const char *addr, int port, struct sockaddr_in *sockaddr, int isBindAddr);
+int spdIoT_socket_tosockaddrinfo(int sockType, const char *addr, int port, struct addrinfo **addrInfo, int isBingAddr);
+
+#define spdIoT_socket_getrawtype(sock) (((sock->type & SPDIoT_NET_SOCKET_STREAM) == SPDIoT_NET_SOCKET_STREAM) ? SOCK_STREAM : SOCK_DGRAM)
 
 spdIoTSocket *spdIoT_socket_new(int type)
 {
     spdIoTSocket *sock;
 
-    sock = (spdIoTSocket) calloc(1, sizeof(spdIoTSocket));
+    sock = (spdIoTSocket *) calloc(1, sizeof(spdIoTSocket));
     if (NULL != sock) {
         sock->id = -1;
         spdIoT_socket_settype(sock, type);
         spdIoT_socket_setdirection(sock, SPDIoT_NET_SOCKET_NONE);
         sock->ipaddr = spdIoT_string_new();
-        spdIoT_socket_setaddress(socket, "");
+        spdIoT_socket_setaddress(sock, "");
         spdIoT_socket_setport(sock, -1);
-#if define(SPDIoT_USE_OPENSSL)
-        sock->ctx = NULL;
-        sock->ssl = NULL;
-#endif
     }
 
     return sock;
@@ -58,20 +58,6 @@ int spdIoT_socket_close(spdIoTSocket *sock)
         return 0;
     }
 
-#if define(SPDIoT_USE_OPENSSL)
-    if (spdIoT_socket_isssl(sock)) {
-        if (sock->ssl) {
-            SSL_shutdown(sock->ssl);
-            SSL_free(sock->ssl);
-            sock->ssl = NULL;
-        }
-        if (sock->ctx) {
-            SSL_CTX_free(sock->ctx);
-            sock->ctx = NULL;
-        }
-    }
-#endif
-
     close(sock->id);
     return 0;
 }
@@ -87,7 +73,7 @@ int spdIoT_socket_bind(spdIoTSocket *sock, int bindPort,
     struct addrinfo *addrInfo;
     int ret = 0;
 
-    if (spdIoT_socket_tosocketaddrinfo(spdIoT_socket_getrawtype(sock),
+    if (spdIoT_socket_tosockaddrinfo(spdIoT_socket_getrawtype(sock),
                                        bindAddr, bindPort, &addrInfo, bindFlag) < 0) {
         return -1;
     }
@@ -115,7 +101,7 @@ int spdIoT_socket_bind(spdIoTSocket *sock, int bindPort,
 
 int spdIoT_socket_accept(spdIoTSocket *serverSock, spdIoTSocket *clientSock)
 {
-    struct socketadrr_in sockaddr;
+    struct sockaddr_in sockaddr;
     socklen_t socklen;
     char localAddr[SPDIoT_NET_SOCKET_MAXHOST];
     char localPort[SPDIoT_NET_SOCKET_MAXSERV];
@@ -123,7 +109,7 @@ int spdIoT_socket_accept(spdIoTSocket *serverSock, spdIoTSocket *clientSock)
     socklen_t nLength = sizeof(sockClientAddr);
 
     spdIoT_socket_setid(clientSock,
-                        accept(serverSock->id, (struct sockaddr *)&sockClientAddr, nLength));
+                        accept(serverSock->id, (struct sockaddr *)&sockClientAddr, &nLength));
     if (clientSock->id < 0) {
         return -1;
     }
@@ -147,7 +133,7 @@ int spdIoT_socket_connect(spdIoTSocket *sock, const char *addr, int port)
     int ret;
 
     if (spdIoT_socket_tosockaddrinfo(spdIoT_socket_getrawtype(sock),
-                                     addr, port, &toaddrinfo, 1) == false) {
+                                     addr, port, &toaddrinfo, 1) < 0) {
         return -1;
     }
     if (!spdIoT_socket_isbound(sock)) {
@@ -158,31 +144,15 @@ int spdIoT_socket_connect(spdIoTSocket *sock, const char *addr, int port)
 
     spdIoT_socket_setdirection(sock, SPDIoT_NET_SOCKET_CLIENT);
 
-#if define(SPDIoT_USE_OPENSSL)
-    if (spdIoT_socket_isssl(sock)) {
-        sock->ctx = SSL_CTX_new(SSLv23_client_method());
-        sock->ssl = SSL_new(sock->ctx);
-        if (SSL_set_fd(sock->ssl, spdIoT_socket_getid(sock)) == 0) {
-            spdIoT_sock_close(sock);
-            return -1;
-        }
-        if (SSL_connect(sock->ssl) < 1) {
-            spdIoT_socket_close(sock);
-            return -1;
-        }
-    }
-#endif
     return ret;
 }
 
 ssize_t spdIoT_socket_read(spdIoTSocket *sock, char *buffer, size_t bufferlen)
 {
     ssize_t recvlen;
-#if define(SPDIoT_USE_OPENSSL)
-    recvlen = SSL_read(sock->ssl, buffer, bufferlen);
-#else
+
     recvlen = recv(sock->id, buffer, bufferlen, 0);
-#endif
+
     return recvlen;
 }
 
@@ -199,19 +169,11 @@ size_t spdIoT_socket_write(spdIoTSocket *sock, const char *cmd, size_t cmdLen)
     }
 
     do {
-#if define(SPDIoT_USE_OPENSSL)
-        if (spdIoT_socket_isssl(sock)) {
-            nSent = SSL_write(sock->ssl, cmd + cmdPos, cmdLen);
-        } else {
-            nSent = send(sock->id, cmd + cmdPos, cmdLen, 0);
-        }
-#else
         nSent = send(sock->id, cmd + cmdPos, cmdLen, 0);
-#endif
 
         if (nSent <= 0) {
             retryCnt++;
-            if (SPDIoT_NET_SOCKET_SEND_RETRY_CNT < retryCnt) {
+            if (UN_NET_SOCKET_SEND_RETRY_CNT < retryCnt) {
                 nTotalSent = 0;
                 break;
             }
@@ -301,7 +263,7 @@ size_t spdIoT_socket_sendto(spdIoTSocket *sock,
         spdIoT_socket_setid(sock, socket(addrInfo->ai_family, addrInfo->ai_socktype, 0));
     }
 
-    spdIoT_socket_setmulticastttl(sock, SPDIoT_NET_SOCK_MULTICAST_DEFAULT_TTL);
+    spdIoT_socket_setmulticastttl(sock, SPDIoT_NET_SOCKET_MULTICAST_DEFAULT_TTL);
 
     if (0 <= sock->id) {
         sentLen = sendto(sock->id, data, dataLen, 0, addrInfo->ai_addr, addrInfo->ai_addrlen);
@@ -402,7 +364,7 @@ int spdIoT_socket_joingroup(spdIoTSocket *sock, const char *mcastAddr, const cha
     struct sockaddr_in toaddr, ifaddr;
 
     int joinSuccess;
-    int sockOptRetCode;spdIoT_socket_tosockaddrinfo
+    int sockOptRetCode;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
@@ -538,7 +500,7 @@ void spdIoT_socket_datagram_packet_delete(spdIoTDatagramPacket *dgmPkt)
     free(dgmPkt);
 }
 
-void spdIoT_socket_datagram_packet_copy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt)
+void spdIoT_socket_datagram_packet_cpy(spdIoTDatagramPacket *dstDgmPkt, spdIoTDatagramPacket *srcDgmPkt)
 {
     spdIoT_socket_datagram_packet_setdata(dstDgmPkt, spdIoT_socket_datagram_packet_getdata(srcDgmPkt));
     spdIoT_socket_datagram_packet_setlocaladdress(

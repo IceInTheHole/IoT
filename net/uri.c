@@ -128,8 +128,8 @@ void spdIoT_net_uri_setvalue(spdIoTNetURI *uri, const char *value)
         currIdx += strlen(value) - currIdx;
     }
     host = spdIoT_net_uri_gethost(uri);
-    colonIdx = strrchr(host, ':');
-    eblackIdx = strrchr(host, ']');
+    colonIdx = spdIoT_strrchr(host, ":", 1);
+    eblackIdx = spdIoT_strrchr(host, "]", 1);
     if (0 < colonIdx && eblackIdx < colonIdx) {
         hostStr = spdIoT_string_new();
         spdIoT_string_setvalue(hostStr, host);
@@ -156,7 +156,7 @@ void spdIoT_net_uri_setvalue(spdIoTNetURI *uri, const char *value)
         protocol = spdIoT_net_uri_getprotocol(uri);
         if (strcmp(protocol, SPDIoT_NET_URI_PROTOCOL_HTTP) == 0) {
             uri->port = SPDIoT_NET_URI_DEFAULT_HTTP_PORT;
-        } else if (strcmp(protocol, SPDIoT_NET_URI_DEFAULT_FTP_PORT) == 0) {
+        } else if (strcmp(protocol, SPDIoT_NET_URI_PROTOCOL_FTP) == 0) {
             uri->port = SPDIoT_NET_URI_DEFAULT_FTP_PORT;
         }
     }

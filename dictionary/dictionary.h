@@ -1,5 +1,5 @@
-#ifndef DICTIONARY_H
-#define DICTIONARY_H
+#ifndef _SPDIoT_DICTIONARY_H_
+#define _SPDIoT_DICTIONARY_H_
 
 #include "../list/list.h"
 #include "../string/sstring.h"

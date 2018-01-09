@@ -67,7 +67,7 @@ const char *spdIoT_net_uri_getvalue(spdIoTNetURI *uri);
 #define sdpIoT_net_uri_getuser(urip) spdIoT_stirng_getvalue(urip->user)
 #define sdpIoT_net_uri_getpassword(urip) spdIoT_string_getvalue(urip->password)
 #define spdIoT_net_uri_gethost(urip) spdIoT_string_getvalue(urip->host)
-#define spdIoT_net_uri_getport(uirp) (urip->port)
+#define spdIoT_net_uri_getport(urip) (urip->port)
 #define spdIoT_net_uri_getpath(urip) spdIoT_string_getvalue(urip->path)
 #define spdIoT_net_uri_getquery(urip) spdIoT_string_getvalue(urip->query)
 #define spdIoT_net_uri_getfragment(urip) spdIoT_string_getvalue(urip->fragment)

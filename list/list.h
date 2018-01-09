@@ -18,8 +18,8 @@ typedef struct _spdIoTListHead {
 static inline void spdIoT_list_init(spdIoTListHead *list)
 {
 
-    list->next = head;
-    list->prev = head;
+    list->next = list;
+    list->prev = list;
 }
 
 static inline void __spdIoT_list_add(struct _spdIoTListHead *newNode,
@@ -141,7 +141,7 @@ static inline void spdIoT_list_splice_init(struct _spdIoTListHead *list,
     container_of(ptr, type, member)
 
 #define spdIoT_list_for_each(pos, head)            \
-    for (pos = (head)->next;pos != (head); spdIoT_pos = pos->next)
+    for (pos = (head)->next;pos != (head); pos = pos->next)
 
 #define __spdIoT_list_for_each(pos, head)  \
     for (pos = (head)->next; pos != (head); pos = pos->next)
